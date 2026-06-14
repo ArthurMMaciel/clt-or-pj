@@ -258,23 +258,32 @@ O JWT carrega apenas dados de identificacao, como `user_id`, nome, email e role.
 
 ## Modelo de calculo inicial
 
-O MVP considera:
+O modelo atual considera:
 
 - salario bruto CLT;
-- beneficios mensais;
+- beneficios mensais tributaveis e nao tributaveis;
 - descontos mensais;
 - bonus/PLR anual;
+- dependentes para IRRF;
+- INSS CLT progressivo;
+- IRRF mensal;
 - FGTS;
 - 13 salario;
-- ferias + 1/3;
+- ferias + 1/3, considerando como extra anual principalmente o adicional de 1/3;
+- protecao opcional de demissao sem justa causa pela multa de 40% do FGTS;
 - valor mensal PJ;
-- imposto efetivo estimado;
+- Simples Nacional por Anexo III, Anexo V, Fator R ou aliquota manual;
+- receita bruta e folha/pro-labore dos ultimos 12 meses;
+- pro-labore, INSS e IRRF sobre pro-labore;
+- meses pagos no ano;
 - contador;
 - plano de saude;
 - outros custos;
 - reserva para ferias;
 - reserva para 13 equivalente;
+- reserva equivalente a FGTS;
 - reserva de emergencia.
+- risco contratual, aviso previo, pausa remunerada, exclusividade e possibilidade de outros clientes.
 
 O resultado inclui:
 
@@ -285,7 +294,8 @@ O resultado inclui:
 - diferenca mensal;
 - diferenca anual;
 - valor PJ minimo para empatar;
-- recomendacao financeira;
+- valor PJ recomendado com premio de risco;
+- recomendacao financeira anual ajustada por risco;
 - explicacoes do resultado.
 
 ## Telas atuais
@@ -326,6 +336,6 @@ $env:GOCACHE='C:\Projetos\clt-or-pj\backend\.gocache'
 
 ## Aviso sobre os calculos
 
-Os calculos atuais sao estimativas para validar produto e fluxo. Antes de publicar como referencia publica, as regras fiscais devem ser revisadas com fontes oficiais e/ou apoio contabil.
+Os calculos atuais usam parametros de 2026 para INSS, IRRF e Simples Nacional, mas continuam sendo estimativas. Antes de publicar como referencia publica, as regras fiscais devem ser revisadas com fontes oficiais e/ou apoio contabil, e os parametros devem ser versionados.
 
 O projeto nao substitui orientacao juridica, fiscal ou contabil.

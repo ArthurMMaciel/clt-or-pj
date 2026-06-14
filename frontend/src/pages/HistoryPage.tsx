@@ -25,7 +25,7 @@ export function HistoryPage() {
 
   useEffect(() => {
     if (!getToken()) {
-      setError("Entre com sua conta para ver o historico.");
+      setError("Entre com sua conta para ver o histórico.");
       return;
     }
 
@@ -38,7 +38,7 @@ export function HistoryPage() {
     <section>
       <div className="mb-6 flex items-center gap-2">
         <Clock size={20} />
-        <h1 className="text-2xl font-semibold">Historico do usuario</h1>
+        <h1 className="text-2xl font-semibold">Histórico do usuário</h1>
       </div>
       {error ? <p className="mb-4 rounded-md border border-clay/30 bg-white p-4 text-clay">{error}</p> : null}
       <div className="overflow-hidden rounded-lg border border-ink/10 bg-white">
@@ -50,7 +50,7 @@ export function HistoryPage() {
               <th className="px-4 py-3">Resultado</th>
               <th className="px-4 py-3">CLT</th>
               <th className="px-4 py-3">PJ</th>
-              <th className="px-4 py-3">Acao</th>
+              <th className="px-4 py-3">Ação</th>
             </tr>
           </thead>
           <tbody>
@@ -72,7 +72,7 @@ export function HistoryPage() {
           </tbody>
         </table>
         {!error && rows.length === 0 ? (
-          <p className="p-5 text-sm text-ink/70">Nenhuma simulacao salva ainda.</p>
+          <p className="p-5 text-sm text-ink/70">Nenhuma simulação salva ainda.</p>
         ) : null}
       </div>
     </section>

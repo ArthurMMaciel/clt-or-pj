@@ -25,7 +25,7 @@ function App() {
               </NavLink>
               <div className="flex gap-2 text-sm">
                 <NavItem to="/">Calculadora</NavItem>
-                <NavItem to="/historico">Historico</NavItem>
+                <NavItem to="/historico">Histórico</NavItem>
                 <NavItem to="/login">Login</NavItem>
                 <NavItem to="/cadastro">Cadastro</NavItem>
                 <NavItem to="/admin">Admin</NavItem>

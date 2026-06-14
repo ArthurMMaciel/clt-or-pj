@@ -12,7 +12,7 @@ const monthlyData = [
 
 const users = [
   { name: "Ana Souza", email: "ana@email.com", createdAt: "04/06/2026", confirmed: "Sim" },
-  { name: "Bruno Lima", email: "bruno@email.com", createdAt: "02/06/2026", confirmed: "Nao" },
+  { name: "Bruno Lima", email: "bruno@email.com", createdAt: "02/06/2026", confirmed: "Não" },
 ];
 
 export function AdminDashboard() {
@@ -24,15 +24,15 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card label="Usuarios totais" value="72" />
-        <Card label="Usuarios confirmados" value="61" />
-        <Card label="Calculos totais" value="1.382" />
-        <Card label="Calculos no mes" value="410" />
+        <Card label="Usuários totais" value="72" />
+        <Card label="Usuários confirmados" value="61" />
+        <Card label="Cálculos totais" value="1.382" />
+        <Card label="Cálculos no mês" value="410" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Chart title="Usuarios cadastrados x mes" dataKey="users" color="#2f8f72" />
-        <Chart title="Calculos feitos x mes" dataKey="calculations" color="#c46a4a" />
+        <Chart title="Usuários cadastrados x mês" dataKey="users" color="#2f8f72" />
+        <Chart title="Cálculos feitos x mês" dataKey="calculations" color="#c46a4a" />
       </div>
 
       <div className="rounded-lg border border-ink/10 bg-white">

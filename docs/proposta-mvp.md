@@ -169,44 +169,57 @@ A aplicacao deve funcionar sem cadastro para calculos rapidos. Usuarios cadastra
 - `GET /api/v1/admin/parameters`
 - `PUT /api/v1/admin/parameters/:id`
 
-## 4. Primeiro modelo de calculo CLT x PJ
+## 4. Modelo de calculo CLT x PJ
 
 ### Entradas CLT
 
 - salario bruto mensal
-- beneficios mensais: VR/VA, plano de saude, outros
+- beneficios mensais nao tributaveis: VR/VA, ajuda de custo, outros
+- beneficios mensais tributaveis quando existirem
 - descontos mensais adicionais
 - bonus/PLR anual opcional
+- dependentes para IRRF
 - considerar FGTS
 - considerar 13 salario
 - considerar ferias + 1/3
+- considerar multa de 40% sobre FGTS como protecao em demissao sem justa causa
 
 ### Entradas PJ
 
 - valor mensal do contrato
-- imposto efetivo estimado
+- regime tributario: automatico por Fator R, Simples Anexo III, Simples Anexo V ou aliquota manual
+- receita bruta dos ultimos 12 meses
+- folha/pro-labore dos ultimos 12 meses
+- pro-labore mensal ou percentual de pro-labore
+- meses pagos no ano
 - custo mensal de contador
 - custo mensal de plano de saude
 - outros custos mensais
 - reserva para ferias
 - reserva para 13 equivalente
+- reserva equivalente a FGTS
 - reserva para emergencia/intervalo sem contrato
+- risco contratual, aviso previo, pausa remunerada, exclusividade e possibilidade de outros clientes
 
 ### Saidas
 
 - liquido mensal estimado CLT
 - equivalente anual CLT
+- INSS e IRRF mensal CLT
+- 13 liquido, ferias liquidas, FGTS anual e protecao de demissao quando marcados
 - liquido mensal estimado PJ
 - equivalente anual PJ
+- Simples/Fator R, aliquota efetiva, pro-labore, INSS e IRRF sobre pro-labore
 - diferenca mensal
 - diferenca anual
 - valor PJ minimo sugerido para empatar
+- valor PJ recomendado com premio de risco
 - recomendacao: CLT, PJ ou neutro
 - explicacoes dos principais fatores
 
 ### Observacao fiscal
 
-O MVP usa parametros configuraveis e estimativas. Antes de publicar a calculadora como referencia publica, sera necessario validar faixas de INSS, IRRF, Simples Nacional, fator R e demais regras com fontes oficiais atualizadas.
+O MVP usa uma versao 2026 das tabelas de INSS, IRRF e Simples Nacional. A comparacao continua sendo uma estimativa e deve exibir aviso de que nao substitui orientacao juridica, fiscal ou contabil. Antes de publicar como referencia publica, os parametros devem ser versionados e revisados contra fontes oficiais.
 
 ## 5. Backlog por fases
 

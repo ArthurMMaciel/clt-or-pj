@@ -1,42 +1,97 @@
-export type ComparePayload = {
-  clt: {
+export type CLTPayload = {
     grossSalary: number;
     monthlyBenefits: number;
+    monthlyTaxableBenefits: number;
     monthlyDiscounts: number;
     annualBonus: number;
+    dependents: number;
     includeFgts: boolean;
     includeThirteenth: boolean;
     includeVacation: boolean;
-  };
-  pj: {
+    includeTerminationProtection: boolean;
+};
+
+export type PJPayload = {
     monthlyRate: number;
+    taxRegime: string;
     effectiveTaxRate: number;
+    grossRevenueLast12Months: number;
+    payrollLast12Months: number;
+    proLabore: number;
+    proLaboreRate: number;
+    paidMonthsPerYear: number;
     monthlyAccountingCost: number;
     monthlyHealthPlanCost: number;
     otherMonthlyCosts: number;
     vacationReserveRate: number;
     thirteenthReserveRate: number;
+    fgtsReserveRate: number;
     emergencyReserveRate: number;
-  };
+    contractRisk: string;
+    noticeDays: number;
+    hasPaidVacation: boolean;
+    allowsOtherClients: boolean;
+    requiresExclusivity: boolean;
+};
+
+export type ComparePayload = {
+  clt: CLTPayload;
+  pj: PJPayload;
+};
+
+export type MoneyBreakdown = {
+  monthlyNet: number;
+  annualNet: number;
+  monthlyReserve: number;
+  annualReserve: number;
+  monthlyGross: number;
+  monthlyTaxableIncome: number;
+  monthlyInss: number;
+  monthlyIrrf: number;
+  monthlyTaxes: number;
+  monthlyCosts: number;
+  annualThirteenthNet: number;
+  annualVacationNet: number;
+  annualFgts: number;
+  annualTerminationValue: number;
+  annualBenefits: number;
+  annualProtectionValue: number;
+  taxRegime: string;
+  effectiveTaxRate: number;
+  factorR: number;
+  proLabore: number;
+  paidMonthsPerYear: number;
+  riskPremiumRate: number;
+  requiredRiskPremiumPj: number;
 };
 
 export type CompareResult = {
-  clt: {
-    monthlyNet: number;
-    annualNet: number;
-    monthlyReserve: number;
-    annualReserve: number;
-  };
-  pj: {
-    monthlyNet: number;
-    annualNet: number;
-    monthlyReserve: number;
-    annualReserve: number;
-  };
+  clt: MoneyBreakdown;
+  pj: MoneyBreakdown;
   monthlyDifference: number;
   annualDifference: number;
+  riskAdjustedGap: number;
   recommendedOption: "clt" | "pj" | "neutral";
   minimumPjToBreakEven: number;
+  minimumPjRecommended: number;
+  summary: string;
+  reasons: string[];
+};
+
+export type EquivalentResult = {
+  equivalentValue: number;
+  recommendedValue: number;
+  minimumBreakEven: number;
+  reference: MoneyBreakdown;
+  equivalent: MoneyBreakdown;
+  summary: string;
+  recommendedOption: "clt" | "pj" | "neutral";
+  riskPremiumRate: number;
+  monthlyDifference: number;
+  annualDifference: number;
+  riskAdjustedGap: number;
+  minimumPjToBreakEven: number;
+  minimumPjRecommended: number;
   reasons: string[];
 };
 
@@ -71,7 +126,41 @@ export async function compareContracts(payload: ComparePayload): Promise<Compare
   });
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel calcular a comparacao.");
+    throw new Error("Não foi possível calcular a comparação.");
+  }
+
+  return response.json();
+}
+
+export async function cltToPj(payload: { clt: CLTPayload; pj: Partial<PJPayload> }): Promise<EquivalentResult> {
+  const response = await fetch(`${API_URL}/api/v1/calculations/clt-to-pj`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Não foi possível calcular o PJ equivalente.");
+  }
+
+  return response.json();
+}
+
+export async function pjToClt(payload: { pj: PJPayload }): Promise<EquivalentResult> {
+  const response = await fetch(`${API_URL}/api/v1/calculations/pj-to-clt`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Não foi possível calcular o CLT equivalente.");
   }
 
   return response.json();
@@ -85,7 +174,7 @@ export async function register(payload: { name: string; email: string; password:
   });
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel cadastrar.");
+    throw new Error("Não foi possível cadastrar.");
   }
 
   return response.json();
@@ -99,7 +188,7 @@ export async function login(payload: { email: string; password: string }) {
   });
 
   if (!response.ok) {
-    throw new Error("Email ou senha invalidos.");
+    throw new Error("Email ou senha inválidos.");
   }
 
   const data = await response.json();
@@ -113,7 +202,7 @@ export async function fetchMyCalculations() {
   });
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar o historico.");
+    throw new Error("Não foi possível carregar o histórico.");
   }
 
   return response.json();
@@ -127,7 +216,7 @@ export async function confirmEmail(token: string) {
   });
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel confirmar o email.");
+    throw new Error("Não foi possível confirmar o email.");
   }
 
   return response.json();

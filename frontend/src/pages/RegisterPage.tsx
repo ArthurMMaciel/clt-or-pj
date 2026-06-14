@@ -53,7 +53,7 @@ export function RegisterPage() {
           Cadastrar
         </button>
         <Link to="/login" className="text-center text-sm text-ink/70 hover:text-ink">
-          Ja tenho conta
+          Já tenho conta
         </Link>
       </form>
     </section>
