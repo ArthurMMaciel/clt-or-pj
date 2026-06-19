@@ -2,6 +2,7 @@ import { Clock, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { fetchMyCalculations, getToken } from "../lib/api";
+import { useAuth } from "../lib/demoAuth";
 
 type Calculation = {
   id: string;
@@ -19,11 +20,42 @@ const BRL = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+const demoCalculations: Calculation[] = [
+  {
+    id: "demo-1",
+    type: "compare",
+    created_at: "2026-06-18T13:20:00Z",
+    recommendation: "pj",
+    input_json: { clt: { grossSalary: 10000 }, pj: { monthlyRate: 15500 } },
+  },
+  {
+    id: "demo-2",
+    type: "clt_to_pj",
+    created_at: "2026-06-12T10:00:00Z",
+    recommendation: "pj",
+    input_json: { clt: { grossSalary: 8500 }, pj: { monthlyRate: 14200 } },
+  },
+  {
+    id: "demo-3",
+    type: "pj_to_clt",
+    created_at: "2026-06-08T15:45:00Z",
+    recommendation: "clt",
+    input_json: { clt: { grossSalary: 9200 }, pj: { monthlyRate: 13000 } },
+  },
+];
+
 export function HistoryPage() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<Calculation[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (user?.kind === "demo") {
+      setRows(demoCalculations);
+      setError(null);
+      return;
+    }
+
     if (!getToken()) {
       setError("Entre com sua conta para ver o histórico.");
       return;
@@ -32,16 +64,21 @@ export function HistoryPage() {
     fetchMyCalculations()
       .then(setRows)
       .catch((err) => setError(err instanceof Error ? err.message : "Erro inesperado."));
-  }, []);
+  }, [user]);
 
   return (
     <section>
-      <div className="mb-6 flex items-center gap-2">
-        <Clock size={20} />
-        <h1 className="text-2xl font-semibold">Histórico do usuário</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Clock size={20} />
+          <h1 className="text-2xl font-semibold">Histórico do usuário</h1>
+        </div>
+        {user?.kind === "demo" ? (
+          <span className="rounded-full bg-lime/60 px-3 py-1 text-xs font-semibold">Dados demonstrativos</span>
+        ) : null}
       </div>
       {error ? <p className="mb-4 rounded-md border border-clay/30 bg-white p-4 text-clay">{error}</p> : null}
-      <div className="overflow-hidden rounded-lg border border-ink/10 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-ink/10 bg-white">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-ink text-white">
             <tr>

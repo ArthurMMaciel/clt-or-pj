@@ -301,11 +301,41 @@ O resultado inclui:
 ## Telas atuais
 
 - Calculadora publica CLT x PJ
+- Conversas com assistente demonstrativa para explicar comparacoes e contratos
+- Upload local de PDF, DOCX, TXT e Markdown para triagem de clausulas
 - Cadastro
 - Login
 - Confirmacao de email
 - Historico do usuario
 - Dashboard admin inicial com graficos mockados
+
+## Modo de demonstracao
+
+Na tela de login, use **Entrar como Arthur (demo)**. Esse modo nao depende do
+backend e libera:
+
+- navegacao autenticada com abas de Historico e Conversas;
+- historico ficticio de simulacoes;
+- chat deterministico sobre CLT e PJ;
+- contrato PJ de exemplo;
+- leitura local de contratos PDF, DOCX, TXT e Markdown.
+
+O chat e a analise documental sao demonstrativos e nao substituem orientacao
+juridica, fiscal, contabil ou financeira.
+
+## Gerar o pitch
+
+O pitch do Programa Centelha 3 Parana pode ser recriado com:
+
+```powershell
+npm.cmd run generate:pitch
+```
+
+Arquivo gerado:
+
+```text
+docs/CLT-ou-PJ-Pitch-Centelha-3-PR.pptx
+```
 
 ## Comandos de validacao
 
