@@ -151,7 +151,7 @@ func CLTToPJ(input CLTToPJInput, params Parameters) EquivalentResult {
 		MinimumPJRecommended: round2(recommended),
 		Reasons: []string{
 			"O valor PJ mínimo empata o pacote anual CLT, incluindo INSS, IRRF, 13º, férias, FGTS, bônus, PLR e benefícios marcados.",
-			fmt.Sprintf("A recomendação usa %s, alíquota efetiva de %s, fator R de %s e pró-labore de %s.", recommendedPJ.TaxRegime, formatPercent(recommendedPJ.EffectiveTaxRate), formatPercent(recommendedPJ.FactorR), formatBRL(recommendedPJ.ProLabore)),
+			fmt.Sprintf("A recomendação usa %s, alíquota efetiva de %s, fator R de %s e pró-labore de %s.", regimeLabel(recommendedPJ.TaxRegime), formatPercent(recommendedPJ.EffectiveTaxRate), formatPercent(recommendedPJ.FactorR), formatBRL(recommendedPJ.ProLabore)),
 			fmt.Sprintf("Custos fixos do PJ recomendado somam %s por mês, pagos nos 12 meses do ano.", formatBRL(recommendedPJ.MonthlyCosts)),
 			fmt.Sprintf("Sugestão: separar %s por mês para férias, 13º e emergência. Esse valor continua seu e não reduz o pacote anual.", formatBRL(recommendedPJ.MonthlyReserve)),
 			fmt.Sprintf("A margem de risco adiciona %s por mês sobre o mínimo de empate, para compensar a ausência de proteções trabalhistas.", formatBRL(recommended-minimumBreakEven)),
@@ -185,7 +185,7 @@ func PJToCLT(input PJToCLTInput, params Parameters) EquivalentResult {
 			"O valor CLT equivalente é estimado buscando um pacote anual CLT próximo ao resultado anual PJ.",
 			fmt.Sprintf("O CLT equivalente teria líquido mensal estimado de %s, INSS de %s e IRRF de %s.", formatBRL(clt.MonthlyNet), formatBRL(clt.MonthlyINSS), formatBRL(clt.MonthlyIRRF)),
 			fmt.Sprintf("A conta considera 13º líquido de %s, férias líquidas de %s e FGTS anual de %s.", formatBRL(clt.AnnualThirteenthNet), formatBRL(clt.AnnualVacationNet), formatBRL(clt.AnnualFGTS)),
-			fmt.Sprintf("O PJ usado como base está em %s, com alíquota efetiva de %s e fator R de %s.", pj.TaxRegime, formatPercent(pj.EffectiveTaxRate), formatPercent(pj.FactorR)),
+			fmt.Sprintf("O PJ usado como base está em %s, com alíquota efetiva de %s e fator R de %s.", regimeLabel(pj.TaxRegime), formatPercent(pj.EffectiveTaxRate), formatPercent(pj.FactorR)),
 		},
 	}
 }
@@ -565,7 +565,7 @@ func buildReasons(annualDifference, riskAdjustedGap float64, input CompareInput,
 		reasons = append(reasons, fmt.Sprintf("FGTS adiciona %s ao valor anual comparável, mas não entra como dinheiro livre todo mês.", formatBRL(clt.AnnualFGTS)))
 	}
 
-	reasons = append(reasons, fmt.Sprintf("PJ foi calculado como %s, com alíquota efetiva de %s e fator R de %s.", pj.TaxRegime, formatPercent(pj.EffectiveTaxRate), formatPercent(pj.FactorR)))
+	reasons = append(reasons, fmt.Sprintf("PJ foi calculado como %s, com alíquota efetiva de %s e fator R de %s.", regimeLabel(pj.TaxRegime), formatPercent(pj.EffectiveTaxRate), formatPercent(pj.FactorR)))
 	reasons = append(reasons, fmt.Sprintf("Custos fixos do PJ somam %s por mês, pagos nos 12 meses do ano.", formatBRL(pj.MonthlyCosts)))
 	reasons = append(reasons, fmt.Sprintf("Sugestão: separar %s por mês para férias, 13º e emergência. Esse valor continua seu e não reduz o pacote anual.", formatBRL(pj.MonthlyReserve)))
 
@@ -642,4 +642,17 @@ func formatBRL(value float64) string {
 func formatPercent(value float64) string {
 	formatted := fmt.Sprintf("%.2f", round2(value*100))
 	return strings.Replace(formatted, ".", ",", 1) + "%"
+}
+
+func regimeLabel(regime string) string {
+	switch regime {
+	case taxRegimeAnexoIII:
+		return "Simples Nacional Anexo III"
+	case taxRegimeAnexoV:
+		return "Simples Nacional Anexo V"
+	case taxRegimeManual:
+		return "alíquota manual"
+	default:
+		return regime
+	}
 }
