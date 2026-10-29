@@ -60,14 +60,14 @@ export function LoginPage() {
         className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-lime px-4 py-2.5 font-semibold text-ink hover:bg-lime/85"
         onClick={() => {
           loginDemo();
-          navigate("/conversas");
+          navigate("/calculadora");
         }}
       >
         <Sparkles size={18} />
         Entrar como Arthur (demo)
       </button>
       <p className="mt-3 text-center text-xs leading-5 text-ink/50">
-        Ativa histórico e conversas com dados fictícios, sem depender do backend.
+        Ativa histórico com dados fictícios, sem depender do backend.
       </p>
     </section>
   );

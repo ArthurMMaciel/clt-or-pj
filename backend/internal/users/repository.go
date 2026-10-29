@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"time"
 
+	"clt-or-pj/backend/internal/calculator"
 	"clt-or-pj/backend/internal/supabase"
 )
 
@@ -135,7 +136,7 @@ func (r *Repository) SaveCalculation(userID *string, calculationType string, inp
 		"input_json":          input,
 		"result_json":         result,
 		"recommendation":      recommendation,
-		"calculation_version": "mvp-1",
+		"calculation_version": calculator.Version,
 	}
 
 	return r.client.Insert("calculations", payload, nil)

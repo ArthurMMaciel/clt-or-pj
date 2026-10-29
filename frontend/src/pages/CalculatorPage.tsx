@@ -115,7 +115,7 @@ export function CalculatorPage() {
             Compare CLT e PJ pelo pacote anual, não só pelo líquido mensal
           </h1>
           <p className="mt-3 text-ink/70">
-            A conta inclui impostos, direitos, FGTS, reservas, Simples/Fator R, pró-labore e prêmio de risco.
+            A conta inclui impostos, direitos, FGTS, PLR, Simples/Fator R, pró-labore e margem de risco.
           </p>
         </div>
 
@@ -164,6 +164,7 @@ function readCLT(form: FormData): CLTPayload {
     monthlyTaxableBenefits: number(form, "cltMonthlyTaxableBenefits"),
     monthlyDiscounts: number(form, "cltMonthlyDiscounts"),
     annualBonus: number(form, "cltAnnualBonus"),
+    annualPlr: number(form, "cltAnnualPlr"),
     dependents: number(form, "cltDependents"),
     includeFgts: form.has("includeFgts"),
     includeThirteenth: form.has("includeThirteenth"),
@@ -231,7 +232,8 @@ function CLTFields() {
         <CurrencyField name="cltMonthlyBenefits" label="Benefícios não tributáveis" defaultValue="1000" />
         <CurrencyField name="cltMonthlyTaxableBenefits" label="Benefícios tributáveis" defaultValue="0" />
         <CurrencyField name="cltMonthlyDiscounts" label="Descontos extras" defaultValue="0" />
-        <CurrencyField name="cltAnnualBonus" label="Bônus/PLR anual" defaultValue="0" />
+        <CurrencyField name="cltAnnualBonus" label="Bônus anual" defaultValue="0" />
+        <CurrencyField name="cltAnnualPlr" label="PLR anual" defaultValue="0" />
         <Field name="cltDependents" label="Dependentes IRRF" defaultValue="0" step="1" />
       </div>
       <div className="mt-4 flex flex-wrap gap-4 text-sm">
@@ -270,10 +272,10 @@ function PJFields() {
         <CurrencyField name="pjMonthlyAccountingCost" label="Contador" defaultValue="250" />
         <CurrencyField name="pjMonthlyHealthPlanCost" label="Plano de saúde" defaultValue="700" />
         <CurrencyField name="pjOtherMonthlyCosts" label="Outros custos" defaultValue="0" />
-        <Field name="pjVacationReserveRate" label="Reserva férias (%)" defaultValue="8.33" />
-        <Field name="pjThirteenthReserveRate" label="Reserva 13 (%)" defaultValue="8.33" />
-        <Field name="pjFgtsReserveRate" label="Reserva tipo FGTS (%)" defaultValue="8" />
-        <Field name="pjEmergencyReserveRate" label="Reserva risco (%)" defaultValue="10" />
+        <Field name="pjVacationReserveRate" label="Separar p/ férias (%)" defaultValue="8.33" />
+        <Field name="pjThirteenthReserveRate" label="Separar p/ 13º (%)" defaultValue="8.33" />
+        <Field name="pjFgtsReserveRate" label="Separar tipo FGTS (%)" defaultValue="8" />
+        <Field name="pjEmergencyReserveRate" label="Separar p/ emergência (%)" defaultValue="10" />
         <Select
           name="pjContractRisk"
           label="Risco do contrato"
@@ -432,7 +434,8 @@ function CompareResultPanel({ result }: { result: CompareResult }) {
         <Metric label="Pacote anual PJ" value={BRL.format(result.pj.annualNet)} />
         <Metric label="Diferença anual" value={BRL.format(result.annualDifference)} />
         <Metric label="PJ mínimo para empatar" value={BRL.format(result.minimumPjToBreakEven)} />
-        <Metric label="PJ recomendado com risco" value={BRL.format(result.minimumPjRecommended)} />
+        <Metric label="PJ recomendado com margem de risco" value={BRL.format(result.minimumPjRecommended)} />
+        <Metric label="PJ: separar por mês (fica com você)" value={BRL.format(result.pj.monthlyReserve)} />
       </div>
 
       <Details result={result} />
@@ -455,7 +458,7 @@ function EquivalentResultPanel({ mode, result }: { mode: Exclude<CalculatorMode,
         {isCLTToPJ ? (
           <>
             <Metric label="PJ mínimo para empatar" value={BRL.format(result.minimumPjToBreakEven)} />
-            <Metric label="PJ recomendado com risco" value={BRL.format(result.minimumPjRecommended)} />
+            <Metric label="PJ recomendado com margem de risco" value={BRL.format(result.minimumPjRecommended)} />
             <Metric label="Líquido mensal PJ recomendado" value={BRL.format(result.equivalent.monthlyNet)} />
             <Metric label="Pacote anual CLT base" value={BRL.format(result.reference.annualNet)} />
             <Metric label="Pacote anual PJ recomendado" value={BRL.format(result.equivalent.annualNet)} />
@@ -493,9 +496,9 @@ function PJEquivalentDetails({ result }: { result: EquivalentResult }) {
       <Metric label="INSS pró-labore" value={BRL.format(result.equivalent.monthlyInss)} />
       <Metric label="IRRF pró-labore" value={BRL.format(result.equivalent.monthlyIrrf)} />
       <Metric label="Impostos mensais PJ" value={BRL.format(result.equivalent.monthlyTaxes)} />
-      <Metric label="Reservas mensais PJ" value={BRL.format(result.equivalent.monthlyReserve)} />
       <Metric label="Custos fixos PJ" value={BRL.format(result.equivalent.monthlyCosts)} />
-      <Metric label="Prêmio de risco" value={PERCENT.format(result.riskPremiumRate)} />
+      <Metric label="Separar por mês (fica com você)" value={BRL.format(result.equivalent.monthlyReserve)} />
+      <Metric label="Margem de risco" value={PERCENT.format(result.riskPremiumRate)} />
       <Metric label="Líquido mensal CLT base" value={BRL.format(result.reference.monthlyNet)} />
       <Metric label="INSS CLT base" value={BRL.format(result.reference.monthlyInss)} />
       <Metric label="IRRF CLT base" value={BRL.format(result.reference.monthlyIrrf)} />
@@ -517,7 +520,7 @@ function CLTEquivalentDetails({ result }: { result: EquivalentResult }) {
       <Metric label="Alíquota PJ efetiva" value={PERCENT.format(result.reference.effectiveTaxRate)} />
       <Metric label="Fator R PJ base" value={PERCENT.format(result.reference.factorR)} />
       <Metric label="Pró-labore PJ base" value={BRL.format(result.reference.proLabore)} />
-      <Metric label="Reservas mensais PJ base" value={BRL.format(result.reference.monthlyReserve)} />
+      <Metric label="PJ base: separar por mês" value={BRL.format(result.reference.monthlyReserve)} />
     </div>
   );
 }
@@ -533,7 +536,7 @@ function Details({ result }: { result: CompareResult }) {
         <Metric label="Alíquota PJ efetiva" value={PERCENT.format(result.pj.effectiveTaxRate)} />
         <Metric label="Fator R" value={PERCENT.format(result.pj.factorR)} />
         <Metric label="Pró-labore" value={BRL.format(result.pj.proLabore)} />
-        <Metric label="Prêmio de risco" value={PERCENT.format(result.pj.riskPremiumRate)} />
+        <Metric label="Margem de risco" value={PERCENT.format(result.pj.riskPremiumRate)} />
       </div>
 
       <ul className="mt-5 grid gap-2 text-sm text-ink/70">

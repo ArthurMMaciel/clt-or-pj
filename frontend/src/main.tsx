@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-dom";
@@ -8,14 +8,12 @@ import { AdminDashboard } from "./pages/AdminDashboard";
 import { CalculatorPage } from "./pages/CalculatorPage";
 import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import "./styles.css";
 
 const queryClient = new QueryClient();
-const ConversationsPage = lazy(() =>
-  import("./pages/ConversationsPage").then((module) => ({ default: module.ConversationsPage })),
-);
 
 function App() {
   return (
@@ -40,9 +38,12 @@ function AppShell() {
             CLT ou PJ
           </NavLink>
           <div className="flex items-center gap-1 overflow-x-auto text-sm">
-            <NavItem to="/">Calculadora</NavItem>
+            <NavItem to="/">Início</NavItem>
+            <NavItem to="/calculadora">Calculadora</NavItem>
             {user ? <NavItem to="/historico">Histórico</NavItem> : null}
-            {user ? <NavItem to="/conversas">Conversas</NavItem> : null}
+            <span className="whitespace-nowrap rounded-md px-3 py-2 text-ink/35" aria-disabled="true">
+              IA em breve
+            </span>
             {!user ? <NavItem to="/login">Login</NavItem> : null}
             {!user ? <NavItem to="/cadastro">Cadastro</NavItem> : null}
             {user ? (
@@ -64,21 +65,16 @@ function AppShell() {
 
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Routes>
-          <Route path="/" element={<CalculatorPage />} />
-          <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/conversas" replace />} />
-          <Route path="/cadastro" element={!user ? <RegisterPage /> : <Navigate to="/conversas" replace />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/calculadora" element={<CalculatorPage />} />
+          <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/calculadora" replace />} />
+          <Route path="/cadastro" element={!user ? <RegisterPage /> : <Navigate to="/calculadora" replace />} />
           <Route path="/confirmar-email" element={<ConfirmEmailPage />} />
           <Route path="/historico" element={user ? <HistoryPage /> : <Navigate to="/login" replace />} />
           <Route
             path="/conversas"
             element={
-              user ? (
-                <Suspense fallback={<div className="rounded-xl bg-white p-6">Carregando conversas...</div>}>
-                  <ConversationsPage />
-                </Suspense>
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              <ComingSoonAI />
             }
           />
           <Route path="/admin" element={user ? <AdminDashboard /> : <Navigate to="/login" replace />} />
@@ -98,6 +94,25 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     >
       {children}
     </NavLink>
+  );
+}
+
+function ComingSoonAI() {
+  return (
+    <section className="mx-auto max-w-xl rounded-lg border border-ink/10 bg-white p-6 text-center shadow-sm">
+      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-mint">Em breve</p>
+      <h1 className="mt-2 text-2xl font-semibold">IA e chats ainda não estão liberados</h1>
+      <p className="mt-3 leading-7 text-ink/65">
+        O plano com análise de contrato e conversa assistida ficará fechado até a validação de produto. Por enquanto,
+        use o plano Essencial para fazer mais cálculos e comparações.
+      </p>
+      <NavLink
+        to="/calculadora"
+        className="mt-6 inline-flex rounded-md bg-mint px-4 py-2.5 font-semibold text-white hover:bg-mint/90"
+      >
+        Ir para calculadora
+      </NavLink>
+    </section>
   );
 }
 

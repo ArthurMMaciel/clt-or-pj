@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "C:\\Program Files\\Go\\bin\\go.exe",
+      "runtimeArgs": ["-C", "backend", "run", "./cmd/api"],
+      "env": { "FRONTEND_URL": "http://localhost:5175" },
+      "port": 8080
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm.cmd",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5175", "--strictPort"],
+      "port": 5175
+    }
+  ]
+}
