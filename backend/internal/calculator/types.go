@@ -6,6 +6,7 @@ type CLTInput struct {
 	MonthlyTaxableBenefits       float64 `json:"monthlyTaxableBenefits" binding:"gte=0"`
 	MonthlyDiscounts             float64 `json:"monthlyDiscounts" binding:"gte=0"`
 	AnnualBonus                  float64 `json:"annualBonus" binding:"gte=0"`
+	AnnualPLR                    float64 `json:"annualPlr" binding:"gte=0"`
 	Dependents                   int     `json:"dependents" binding:"gte=0"`
 	IncludeFGTS                  bool    `json:"includeFgts"`
 	IncludeThirteenth            bool    `json:"includeThirteenth"`
@@ -69,6 +70,7 @@ type MoneyBreakdown struct {
 	MonthlyNet             float64 `json:"monthlyNet"`
 	AnnualNet              float64 `json:"annualNet"`
 	MonthlyReserve         float64 `json:"monthlyReserve"`
+	MonthlyNetAfterReserve float64 `json:"monthlyNetAfterReserve"`
 	AnnualReserve          float64 `json:"annualReserve"`
 	MonthlyGross           float64 `json:"monthlyGross"`
 	MonthlyTaxableIncome   float64 `json:"monthlyTaxableIncome"`
@@ -81,6 +83,8 @@ type MoneyBreakdown struct {
 	AnnualFGTS             float64 `json:"annualFgts"`
 	AnnualTerminationValue float64 `json:"annualTerminationValue"`
 	AnnualBenefits         float64 `json:"annualBenefits"`
+	AnnualBonusNet         float64 `json:"annualBonusNet"`
+	AnnualPLRNet           float64 `json:"annualPlrNet"`
 	AnnualProtectionValue  float64 `json:"annualProtectionValue"`
 	TaxRegime              string  `json:"taxRegime"`
 	EffectiveTaxRate       float64 `json:"effectiveTaxRate"`

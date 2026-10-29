@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+// Version identifica a regra de calculo gravada junto de cada simulacao salva.
+const Version = "mvp-2"
+
 const (
 	taxRegimeAuto         = "auto"
 	taxRegimeManual       = "manual"
@@ -43,6 +46,22 @@ var irrfMonthly2026 = []taxBracket{
 	{Limit: math.Inf(1), Rate: 0.275, Deduction: 908.73},
 }
 
+// Desconto simplificado mensal e deducao por dependente (tabela vigente desde mai/2025).
+const (
+	irrfDependentDeduction = 189.59
+	irrfSimplifiedDiscount = 607.20
+)
+
+// Tabela exclusiva de IRRF sobre PLR (Lei 10.101/2000). Valores 2026 obtidos de fonte
+// secundaria; conferir com a publicacao oficial da Receita antes de cada ano.
+var plrExclusive2026 = []taxBracket{
+	{Limit: 8214.40, Rate: 0, Deduction: 0},
+	{Limit: 9922.28, Rate: 0.075, Deduction: 616.08},
+	{Limit: 13167.00, Rate: 0.15, Deduction: 1360.35},
+	{Limit: 16380.38, Rate: 0.225, Deduction: 2347.85},
+	{Limit: math.Inf(1), Rate: 0.275, Deduction: 3166.58},
+}
+
 var simpleAnexoIII = []simpleBracket{
 	{Limit: 180000, Rate: 0.06},
 	{Limit: 360000, Rate: 0.112, Deduction: 9360},
@@ -72,9 +91,9 @@ func DefaultParameters() Parameters {
 		DefaultThirteenthReserve: 1.0 / 12.0,
 		DefaultFGTSReserve:       0.08,
 		DefaultEmergencyReserve:  0.10,
-		LowRiskPremium:           0.35,
-		MediumRiskPremium:        0.55,
-		HighRiskPremium:          0.80,
+		LowRiskPremium:           0.10,
+		MediumRiskPremium:        0.20,
+		HighRiskPremium:          0.30,
 	}
 }
 
@@ -84,8 +103,8 @@ func Compare(input CompareInput, params Parameters) CompareResult {
 
 	monthlyDifference := round2(pj.MonthlyNet - clt.MonthlyNet)
 	annualDifference := round2(pj.AnnualNet - clt.AnnualNet)
-	minimumBreakEven := round2(minimumPJToMatchCLT(clt.AnnualNet, input.PJ, params, 0))
-	minimumRecommended := round2(minimumPJToMatchCLT(clt.AnnualNet, input.PJ, params, pj.RiskPremiumRate))
+	minimumBreakEven := round2(minimumPJToMatchCLT(clt.AnnualNet, input.PJ, params))
+	minimumRecommended := round2(minimumBreakEven * (1 + pj.RiskPremiumRate))
 	riskAdjustedGap := round2(input.PJ.MonthlyRate - minimumRecommended)
 	recommended := recommendationFrom(annualDifference, riskAdjustedGap)
 	reasons := buildReasons(annualDifference, riskAdjustedGap, input, clt, pj)
@@ -111,8 +130,8 @@ func CLTToPJ(input CLTToPJInput, params Parameters) EquivalentResult {
 		pj.ContractRisk = "medium"
 	}
 	riskPremium := riskPremiumRate(pj, params)
-	minimumBreakEven := minimumPJToMatchCLT(clt.AnnualNet, pj, params, 0)
-	recommended := minimumPJToMatchCLT(clt.AnnualNet, pj, params, riskPremium)
+	minimumBreakEven := minimumPJToMatchCLT(clt.AnnualNet, pj, params)
+	recommended := minimumBreakEven * (1 + riskPremium)
 	minimumPJ := calculatePJWithMonthlyRate(pj, params, minimumBreakEven)
 	recommendedPJ := calculatePJWithMonthlyRate(pj, params, recommended)
 
@@ -122,7 +141,7 @@ func CLTToPJ(input CLTToPJInput, params Parameters) EquivalentResult {
 		MinimumBreakEven:     round2(minimumBreakEven),
 		Reference:            clt,
 		Equivalent:           recommendedPJ,
-		Summary:              fmt.Sprintf("Para substituir este pacote CLT, o PJ mínimo para empatar é %s. Com prêmio de risco de %s, a proposta recomendada sobe para %s.", formatBRL(minimumBreakEven), formatPercent(riskPremium), formatBRL(recommended)),
+		Summary:              fmt.Sprintf("Para substituir este pacote CLT, o PJ mínimo para empatar é %s. Com margem de risco de %s sobre o empate, a proposta recomendada é %s.", formatBRL(minimumBreakEven), formatPercent(riskPremium), formatBRL(recommended)),
 		RecommendedOption:    recommendationPJ,
 		RiskPremiumRate:      round4(riskPremium),
 		MonthlyDifference:    round2(recommendedPJ.MonthlyNet - clt.MonthlyNet),
@@ -131,10 +150,11 @@ func CLTToPJ(input CLTToPJInput, params Parameters) EquivalentResult {
 		MinimumPJToBreakEven: round2(minimumBreakEven),
 		MinimumPJRecommended: round2(recommended),
 		Reasons: []string{
-			"O valor PJ mínimo empata o pacote anual CLT, incluindo INSS, IRRF, 13º, férias, FGTS e benefícios marcados.",
+			"O valor PJ mínimo empata o pacote anual CLT, incluindo INSS, IRRF, 13º, férias, FGTS, bônus, PLR e benefícios marcados.",
 			fmt.Sprintf("A recomendação usa %s, alíquota efetiva de %s, fator R de %s e pró-labore de %s.", recommendedPJ.TaxRegime, formatPercent(recommendedPJ.EffectiveTaxRate), formatPercent(recommendedPJ.FactorR), formatBRL(recommendedPJ.ProLabore)),
-			fmt.Sprintf("Reservas e custos no PJ recomendado retiram %s por mês antes do líquido disponível.", formatBRL(recommendedPJ.MonthlyReserve+recommendedPJ.MonthlyCosts)),
-			fmt.Sprintf("O prêmio de risco adiciona %s por mês sobre o mínimo de empate.", formatBRL(recommended-minimumBreakEven)),
+			fmt.Sprintf("Custos fixos do PJ recomendado somam %s por mês, pagos nos 12 meses do ano.", formatBRL(recommendedPJ.MonthlyCosts)),
+			fmt.Sprintf("Sugestão: separar %s por mês para férias, 13º e emergência. Esse valor continua seu e não reduz o pacote anual.", formatBRL(recommendedPJ.MonthlyReserve)),
+			fmt.Sprintf("A margem de risco adiciona %s por mês sobre o mínimo de empate, para compensar a ausência de proteções trabalhistas.", formatBRL(recommended-minimumBreakEven)),
 			fmt.Sprintf("No mínimo sem risco, o líquido mensal PJ estimado seria %s.", formatBRL(minimumPJ.MonthlyNet)),
 		},
 	}
@@ -173,15 +193,32 @@ func PJToCLT(input PJToCLTInput, params Parameters) EquivalentResult {
 func calculateCLT(input CLTInput, params Parameters) MoneyBreakdown {
 	monthlyTaxable := input.GrossSalary + input.MonthlyTaxableBenefits
 	monthlyINSS := calculateEmployeeINSS(monthlyTaxable)
-	monthlyIRRF := calculateIRRF(monthlyTaxable-monthlyINSS, input.Dependents)
+	monthlyIRRF := calculateIRRF(monthlyTaxable, monthlyINSS, input.Dependents)
 	monthlyNet := input.GrossSalary + input.MonthlyBenefits + input.MonthlyTaxableBenefits - monthlyINSS - monthlyIRRF - input.MonthlyDiscounts
-	annualNet := monthlyNet*12 + input.AnnualBonus
+	annualNet := monthlyNet * 12
 	annualBenefits := (input.MonthlyBenefits + input.MonthlyTaxableBenefits) * 12
+
+	// Bonus pago junto com um salario: INSS e IRRF incrementais do mes em que entra.
+	bonusNet := 0.0
+	if input.AnnualBonus > 0 {
+		bonusBase := monthlyTaxable + input.AnnualBonus
+		bonusINSS := calculateEmployeeINSS(bonusBase)
+		bonusIRRF := calculateIRRF(bonusBase, bonusINSS, input.Dependents) - monthlyIRRF
+		bonusNet = max0(input.AnnualBonus - max0(bonusINSS-monthlyINSS) - max0(bonusIRRF))
+		annualNet += bonusNet
+	}
+
+	// PLR tem tributacao exclusiva e nao sofre INSS nem FGTS.
+	plrNet := 0.0
+	if input.AnnualPLR > 0 {
+		plrNet = input.AnnualPLR - calculatePLRTax(input.AnnualPLR)
+		annualNet += plrNet
+	}
 
 	thirteenthNet := 0.0
 	if input.IncludeThirteenth {
 		thirteenthINSS := calculateEmployeeINSS(input.GrossSalary)
-		thirteenthIRRF := calculateIRRF(input.GrossSalary-thirteenthINSS, input.Dependents)
+		thirteenthIRRF := calculateIRRF(input.GrossSalary, thirteenthINSS, input.Dependents)
 		thirteenthNet = max0(input.GrossSalary - thirteenthINSS - thirteenthIRRF)
 		annualNet += thirteenthNet
 	}
@@ -190,13 +227,14 @@ func calculateCLT(input CLTInput, params Parameters) MoneyBreakdown {
 	if input.IncludeVacation {
 		vacationGross := input.GrossSalary / 3
 		vacationBase := input.GrossSalary + vacationGross
-		vacationINSS := calculateEmployeeINSS(vacationBase) - monthlyINSS
-		vacationIRRF := calculateIRRF(vacationBase-calculateEmployeeINSS(vacationBase), input.Dependents) - monthlyIRRF
+		vacationBaseINSS := calculateEmployeeINSS(vacationBase)
+		vacationINSS := vacationBaseINSS - monthlyINSS
+		vacationIRRF := calculateIRRF(vacationBase, vacationBaseINSS, input.Dependents) - monthlyIRRF
 		vacationNet = max0(vacationGross - max0(vacationINSS) - max0(vacationIRRF))
 		annualNet += vacationNet
 	}
 
-	fgtsBase := input.GrossSalary * 12
+	fgtsBase := input.GrossSalary*12 + input.AnnualBonus
 	if input.IncludeThirteenth {
 		fgtsBase += input.GrossSalary
 	}
@@ -227,7 +265,9 @@ func calculateCLT(input CLTInput, params Parameters) MoneyBreakdown {
 		AnnualVacationNet:      round2(vacationNet),
 		AnnualFGTS:             round2(annualFGTS),
 		AnnualTerminationValue: round2(terminationValue),
-		AnnualBenefits:         round2(annualBenefits + input.AnnualBonus),
+		AnnualBenefits:         round2(annualBenefits),
+		AnnualBonusNet:         round2(bonusNet),
+		AnnualPLRNet:           round2(plrNet),
 		AnnualProtectionValue:  round2(annualFGTS + terminationValue + thirteenthNet + vacationNet),
 	}
 }
@@ -242,31 +282,36 @@ func calculatePJ(input PJInput, params Parameters) MoneyBreakdown {
 	regime, factorR, effectiveTaxRate := resolvePJTax(input, proLabore, params)
 	monthlyCompanyTaxes := input.MonthlyRate * effectiveTaxRate
 	proLaboreINSS := calculateIndividualINSS(proLabore)
-	proLaboreIRRF := calculateIRRF(proLabore-proLaboreINSS, 0)
+	proLaboreIRRF := calculateIRRF(proLabore, proLaboreINSS, 0)
+	monthlyTaxes := monthlyCompanyTaxes + proLaboreINSS + proLaboreIRRF
+	monthlyFixedCosts := input.MonthlyAccountingCost + input.MonthlyHealthPlanCost + input.OtherMonthlyCosts
+	monthlyNet := input.MonthlyRate - monthlyTaxes - monthlyFixedCosts
+	// Impostos acompanham o faturamento; custos fixos correm os 12 meses do ano.
+	annualNet := (input.MonthlyRate-monthlyTaxes)*paidMonths - monthlyFixedCosts*12
+	// Reserva e sugestao de quanto separar: o dinheiro continua do PJ e nao reduz o anual,
+	// senao 13o, ferias e FGTS seriam contados duas vezes contra o PJ.
 	monthlyReserve := input.MonthlyRate * reserveRate(input, params)
-	monthlyCosts := monthlyCompanyTaxes + proLaboreINSS + proLaboreIRRF + monthlyReserve + input.MonthlyAccountingCost + input.MonthlyHealthPlanCost + input.OtherMonthlyCosts
-	monthlyNet := input.MonthlyRate - monthlyCosts
-	annualNet := monthlyNet * paidMonths
 	riskPremium := riskPremiumRate(input, params)
 
 	return MoneyBreakdown{
-		MonthlyNet:            round2(monthlyNet),
-		AnnualNet:             round2(annualNet),
-		MonthlyReserve:        round2(monthlyReserve),
-		AnnualReserve:         round2(monthlyReserve * paidMonths),
-		MonthlyGross:          round2(input.MonthlyRate),
-		MonthlyTaxableIncome:  round2(proLabore),
-		MonthlyINSS:           round2(proLaboreINSS),
-		MonthlyIRRF:           round2(proLaboreIRRF),
-		MonthlyTaxes:          round2(monthlyCompanyTaxes + proLaboreINSS + proLaboreIRRF),
-		MonthlyCosts:          round2(input.MonthlyAccountingCost + input.MonthlyHealthPlanCost + input.OtherMonthlyCosts),
-		TaxRegime:             regime,
-		EffectiveTaxRate:      round4(effectiveTaxRate),
-		FactorR:               round4(factorR),
-		ProLabore:             round2(proLabore),
-		PaidMonthsPerYear:     round2(paidMonths),
-		RiskPremiumRate:       round4(riskPremium),
-		RequiredRiskPremiumPJ: round2(input.MonthlyRate * riskPremium),
+		MonthlyNet:             round2(monthlyNet),
+		AnnualNet:              round2(annualNet),
+		MonthlyReserve:         round2(monthlyReserve),
+		AnnualReserve:          round2(monthlyReserve * paidMonths),
+		MonthlyGross:           round2(input.MonthlyRate),
+		MonthlyTaxableIncome:   round2(proLabore),
+		MonthlyINSS:            round2(proLaboreINSS),
+		MonthlyIRRF:            round2(proLaboreIRRF),
+		MonthlyNetAfterReserve: round2(monthlyNet - monthlyReserve),
+		MonthlyTaxes:           round2(monthlyTaxes),
+		MonthlyCosts:           round2(monthlyFixedCosts),
+		TaxRegime:              regime,
+		EffectiveTaxRate:       round4(effectiveTaxRate),
+		FactorR:                round4(factorR),
+		ProLabore:              round2(proLabore),
+		PaidMonthsPerYear:      round2(paidMonths),
+		RiskPremiumRate:        round4(riskPremium),
+		RequiredRiskPremiumPJ:  round2(input.MonthlyRate * riskPremium),
 	}
 }
 
@@ -294,25 +339,37 @@ func calculateIndividualINSS(proLabore float64) float64 {
 	return round2(base * 0.11)
 }
 
-func calculateIRRF(base float64, dependents int) float64 {
-	taxable := max0(base - float64(dependents)*189.59)
-	tax := 0.0
-	for _, bracket := range irrfMonthly2026 {
-		if taxable <= bracket.Limit {
-			tax = taxable*bracket.Rate - bracket.Deduction
-			break
-		}
-	}
-	tax = max0(tax - monthlyIRReduction(taxable, tax))
+// calculateIRRF recebe o rendimento tributavel bruto e o INSS ja retido. A base usa a
+// deducao mais vantajosa entre as legais (INSS + dependentes) e o desconto simplificado.
+func calculateIRRF(grossTaxable, inss float64, dependents int) float64 {
+	legalDeductions := inss + float64(dependents)*irrfDependentDeduction
+	base := max0(grossTaxable - math.Max(legalDeductions, irrfSimplifiedDiscount))
+	tax := progressiveTax(base, irrfMonthly2026)
+	tax = max0(tax - monthlyIRReduction(grossTaxable, tax))
 	return round2(tax)
 }
 
-func monthlyIRReduction(taxable, calculatedTax float64) float64 {
-	if taxable <= 5000 {
+// monthlyIRReduction aplica a reducao da Lei 15.270/2025, calculada sobre o rendimento
+// tributavel bruto do mes (nao sobre a base apos deducoes).
+func monthlyIRReduction(grossTaxable, calculatedTax float64) float64 {
+	if grossTaxable <= 5000 {
 		return math.Min(calculatedTax, 312.89)
 	}
-	if taxable <= 7350 {
-		return max0(978.62 - 0.133145*taxable)
+	if grossTaxable <= 7350 {
+		return math.Min(calculatedTax, max0(978.62-0.133145*grossTaxable))
+	}
+	return 0
+}
+
+func calculatePLRTax(plr float64) float64 {
+	return round2(progressiveTax(plr, plrExclusive2026))
+}
+
+func progressiveTax(base float64, brackets []taxBracket) float64 {
+	for _, bracket := range brackets {
+		if base <= bracket.Limit {
+			return max0(base*bracket.Rate - bracket.Deduction)
+		}
 	}
 	return 0
 }
@@ -328,7 +385,8 @@ func resolvePJTax(input PJInput, proLabore float64, params Parameters) (string, 
 
 	factor := factorR(input, proLabore)
 	if regime == taxRegimeAuto {
-		if factor >= 0.28 {
+		// Tolerancia evita que 28% exato vire 27,999...% por ponto flutuante e caia no Anexo V.
+		if factor >= 0.28-1e-9 {
 			regime = taxRegimeAnexoIII
 		} else {
 			regime = taxRegimeAnexoV
@@ -394,24 +452,23 @@ func riskPremiumRate(input PJInput, params Parameters) float64 {
 	default:
 		premium := params.MediumRiskPremium
 		if input.NoticeDays >= 30 {
-			premium -= 0.05
+			premium -= 0.03
 		}
 		if input.HasPaidVacation {
-			premium -= 0.05
+			premium -= 0.03
 		}
 		if input.AllowsOtherClients {
-			premium -= 0.05
+			premium -= 0.03
 		}
 		if input.RequiresExclusivity {
-			premium += 0.10
+			premium += 0.05
 		}
 		return clamp(premium, params.LowRiskPremium, params.HighRiskPremium)
 	}
 }
 
-func minimumPJToMatchCLT(targetAnnualNet float64, pj PJInput, params Parameters, premium float64) float64 {
+func minimumPJToMatchCLT(targetAnnualNet float64, pj PJInput, params Parameters) float64 {
 	pj.PaidMonthsPerYear = valueOrDefault(pj.PaidMonthsPerYear, params.DefaultPaidMonthsPerYear)
-	targetAnnualNet = targetAnnualNet * (1 + premium)
 	low := 0.0
 	high := math.Max(targetAnnualNet, 1000)
 	for calculatePJWithMonthlyRate(pj, params, high).AnnualNet < targetAnnualNet {
@@ -485,11 +542,11 @@ func recommendationFrom(annualDifference, riskAdjustedGap float64) string {
 func buildSummary(recommended string, annualDifference, riskAdjustedGap float64, clt, pj MoneyBreakdown) string {
 	switch recommended {
 	case recommendationPJ:
-		return fmt.Sprintf("PJ é mais benéfico no cenário informado: supera o pacote CLT em %s ao ano e passa o mínimo recomendado já com prêmio de risco.", formatBRL(annualDifference))
+		return fmt.Sprintf("PJ é mais benéfico no cenário informado: supera o pacote CLT em %s ao ano e passa o valor recomendado já com margem de risco.", formatBRL(annualDifference))
 	case recommendationCLT:
 		return fmt.Sprintf("CLT é mais benéfico no cenário informado: o pacote anual com direitos, benefícios e proteção fica %s acima do PJ.", formatBRL(math.Abs(annualDifference)))
 	default:
-		return fmt.Sprintf("O PJ fica acima no anual bruto comparável, mas falta %s por mês para compensar o prêmio de risco estimado frente ao pacote CLT.", formatBRL(math.Abs(riskAdjustedGap)))
+		return fmt.Sprintf("O PJ empata ou supera o pacote anual CLT, mas falta %s por mês para cobrir a margem de risco recomendada.", formatBRL(math.Abs(riskAdjustedGap)))
 	}
 }
 
@@ -509,16 +566,17 @@ func buildReasons(annualDifference, riskAdjustedGap float64, input CompareInput,
 	}
 
 	reasons = append(reasons, fmt.Sprintf("PJ foi calculado como %s, com alíquota efetiva de %s e fator R de %s.", pj.TaxRegime, formatPercent(pj.EffectiveTaxRate), formatPercent(pj.FactorR)))
-	reasons = append(reasons, fmt.Sprintf("Reservas e custos do PJ retiram %s por mês antes de comparar com CLT.", formatBRL(pj.MonthlyReserve+pj.MonthlyCosts)))
+	reasons = append(reasons, fmt.Sprintf("Custos fixos do PJ somam %s por mês, pagos nos 12 meses do ano.", formatBRL(pj.MonthlyCosts)))
+	reasons = append(reasons, fmt.Sprintf("Sugestão: separar %s por mês para férias, 13º e emergência. Esse valor continua seu e não reduz o pacote anual.", formatBRL(pj.MonthlyReserve)))
 
 	if pj.PaidMonthsPerYear < 12 {
 		reasons = append(reasons, fmt.Sprintf("PJ considera %.0f meses pagos por ano, reduzindo o resultado anual para refletir pausa sem faturamento.", pj.PaidMonthsPerYear))
 	}
 
 	if riskAdjustedGap >= 0 {
-		reasons = append(reasons, "O valor PJ informado cobre o pacote CLT e o prêmio de risco configurado.")
+		reasons = append(reasons, fmt.Sprintf("O valor PJ informado cobre o pacote CLT e a margem de risco de %s.", formatPercent(pj.RiskPremiumRate)))
 	} else {
-		reasons = append(reasons, fmt.Sprintf("Para compensar ausência de proteção trabalhista, o PJ recomendado deveria ser %s maior por mês.", formatBRL(math.Abs(riskAdjustedGap))))
+		reasons = append(reasons, fmt.Sprintf("Para cobrir a margem de risco de %s pela ausência de proteções trabalhistas, o PJ deveria ser %s maior por mês.", formatPercent(pj.RiskPremiumRate), formatBRL(math.Abs(riskAdjustedGap))))
 	}
 
 	return reasons
