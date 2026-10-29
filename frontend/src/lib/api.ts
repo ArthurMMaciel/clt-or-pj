@@ -4,6 +4,7 @@ export type CLTPayload = {
     monthlyTaxableBenefits: number;
     monthlyDiscounts: number;
     annualBonus: number;
+    annualPlr: number;
     dependents: number;
     includeFgts: boolean;
     includeThirteenth: boolean;
@@ -43,6 +44,7 @@ export type MoneyBreakdown = {
   monthlyNet: number;
   annualNet: number;
   monthlyReserve: number;
+  monthlyNetAfterReserve: number;
   annualReserve: number;
   monthlyGross: number;
   monthlyTaxableIncome: number;
@@ -55,6 +57,8 @@ export type MoneyBreakdown = {
   annualFgts: number;
   annualTerminationValue: number;
   annualBenefits: number;
+  annualBonusNet: number;
+  annualPlrNet: number;
   annualProtectionValue: number;
   taxRegime: string;
   effectiveTaxRate: number;
