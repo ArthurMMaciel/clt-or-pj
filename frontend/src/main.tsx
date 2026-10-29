@@ -1,7 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Scale, Sparkles } from "lucide-react";
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
 
 import { AuthProvider, useAuth } from "./lib/demoAuth";
 import { AdminDashboard } from "./pages/AdminDashboard";
@@ -31,30 +32,35 @@ function AppShell() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="border-b border-ink/10 bg-white">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <NavLink to="/" className="shrink-0 text-lg font-semibold">
-            CLT ou PJ
-          </NavLink>
-          <div className="flex items-center gap-1 overflow-x-auto text-sm">
-            <NavItem to="/">Início</NavItem>
-            <NavItem to="/calculadora">Calculadora</NavItem>
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <header className="sticky top-0 z-20 border-b border-line bg-white/85 backdrop-blur">
+        <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <Logo />
+          <div className="flex items-center gap-1 text-sm">
+            <span className="hidden sm:block">
+              <NavItem to="/calculadora">Calculadora</NavItem>
+            </span>
             {user ? <NavItem to="/historico">Histórico</NavItem> : null}
-            <span className="whitespace-nowrap rounded-md px-3 py-2 text-ink/35" aria-disabled="true">
+            <span
+              className="hidden items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-ink/40 sm:inline-flex"
+              aria-disabled="true"
+            >
+              <Sparkles size={14} />
               IA em breve
             </span>
-            {!user ? <NavItem to="/login">Login</NavItem> : null}
-            {!user ? <NavItem to="/cadastro">Cadastro</NavItem> : null}
+            {!user ? <NavItem to="/login">Entrar</NavItem> : null}
+            {!user ? (
+              <Link to="/cadastro" className="btn-primary ml-1 whitespace-nowrap px-3.5 py-2">
+                Criar conta
+              </Link>
+            ) : null}
             {user ? (
-              <div className="ml-1 hidden items-center gap-2 border-l border-ink/10 pl-3 md:flex">
-                <div className="text-right leading-tight">
+              <div className="ml-1 flex items-center gap-3 border-l border-line pl-3">
+                <div className="hidden text-right leading-tight md:block">
                   <span className="block text-xs font-semibold">{user.name}</span>
-                  <span className="block text-[10px] text-ink/45">
-                    {user.kind === "demo" ? "Conta demo" : "Conta ativa"}
-                  </span>
+                  <span className="block text-[11px] text-ink/45">{user.kind === "demo" ? "Conta demo" : "Conta ativa"}</span>
                 </div>
-                <button className="rounded-md border border-ink/10 px-3 py-2 text-xs hover:bg-ink/5" onClick={logout}>
+                <button className="btn-secondary px-3 py-2 text-xs" onClick={logout}>
                   Sair
                 </button>
               </div>
@@ -63,7 +69,7 @@ function AppShell() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/calculadora" element={<CalculatorPage />} />
@@ -71,16 +77,26 @@ function AppShell() {
           <Route path="/cadastro" element={!user ? <RegisterPage /> : <Navigate to="/calculadora" replace />} />
           <Route path="/confirmar-email" element={<ConfirmEmailPage />} />
           <Route path="/historico" element={user ? <HistoryPage /> : <Navigate to="/login" replace />} />
-          <Route
-            path="/conversas"
-            element={
-              <ComingSoonAI />
-            }
-          />
+          <Route path="/conversas" element={<ComingSoonAI />} />
           <Route path="/admin" element={user ? <AdminDashboard /> : <Navigate to="/login" replace />} />
         </Routes>
       </main>
+
+      <Footer />
     </div>
+  );
+}
+
+function Logo() {
+  return (
+    <Link to="/" className="flex shrink-0 items-center gap-2">
+      <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink text-lime">
+        <Scale size={17} />
+      </span>
+      <span className="font-display text-lg font-extrabold tracking-tight">
+        CLT <span className="text-ink/40">ou</span> PJ
+      </span>
+    </Link>
   );
 }
 
@@ -89,7 +105,9 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `whitespace-nowrap rounded-md px-3 py-2 ${isActive ? "bg-ink text-white" : "text-ink/70 hover:bg-ink/5"}`
+        `whitespace-nowrap rounded-lg px-3 py-2 font-medium transition ${
+          isActive ? "bg-ink/5 text-ink" : "text-ink/60 hover:bg-ink/5 hover:text-ink"
+        }`
       }
     >
       {children}
@@ -97,21 +115,34 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="border-t border-line bg-white">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-ink/55 sm:flex-row sm:items-center sm:justify-between">
+        <Logo />
+        <p className="max-w-xl leading-6">
+          Simulações educativas com as regras de 2026. Não substituem a análise de um contador ou advogado.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 function ComingSoonAI() {
   return (
-    <section className="mx-auto max-w-xl rounded-lg border border-ink/10 bg-white p-6 text-center shadow-sm">
-      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-mint">Em breve</p>
-      <h1 className="mt-2 text-2xl font-semibold">IA e chats ainda não estão liberados</h1>
+    <section className="card mx-auto max-w-xl p-8 text-center">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-mint-soft text-mint">
+        <Sparkles size={22} />
+      </span>
+      <p className="eyebrow mt-4">Em breve</p>
+      <h1 className="mt-2 text-2xl font-bold">Análise com IA está chegando</h1>
       <p className="mt-3 leading-7 text-ink/65">
-        O plano com análise de contrato e conversa assistida ficará fechado até a validação de produto. Por enquanto,
-        use o plano Essencial para fazer mais cálculos e comparações.
+        Estamos preparando perguntas em chat e um checklist de pontos do contrato para levar ao seu advogado. Enquanto
+        isso, a calculadora já responde quanto pedir e qual proposta rende mais.
       </p>
-      <NavLink
-        to="/calculadora"
-        className="mt-6 inline-flex rounded-md bg-mint px-4 py-2.5 font-semibold text-white hover:bg-mint/90"
-      >
-        Ir para calculadora
-      </NavLink>
+      <Link to="/calculadora" className="btn-primary mt-6">
+        Ir para a calculadora
+      </Link>
     </section>
   );
 }

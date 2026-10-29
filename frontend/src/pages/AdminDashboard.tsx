@@ -20,7 +20,7 @@ export function AdminDashboard() {
     <section className="grid gap-6">
       <div className="flex items-center gap-2">
         <BarChart3 size={22} />
-        <h1 className="text-2xl font-semibold">Dashboard admin</h1>
+        <h1 className="text-3xl font-extrabold">Dashboard admin</h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -35,13 +35,13 @@ export function AdminDashboard() {
         <Chart title="Cálculos feitos x mês" dataKey="calculations" color="#c46a4a" />
       </div>
 
-      <div className="rounded-lg border border-ink/10 bg-white">
+      <div className="card">
         <div className="flex items-center gap-2 border-b border-ink/10 px-5 py-4">
           <Users size={18} />
           <h2 className="font-semibold">Cadastrados/clientes</h2>
         </div>
         <table className="w-full min-w-[680px] text-left text-sm">
-          <thead className="bg-ink text-white">
+          <thead className="border-b border-line bg-paper/70 text-xs uppercase tracking-[0.08em] text-ink/50">
             <tr>
               <th className="px-4 py-3">Nome</th>
               <th className="px-4 py-3">Email</th>
@@ -67,7 +67,7 @@ export function AdminDashboard() {
 
 function Card({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-ink/10 bg-white p-5">
+    <div className="card p-5">
       <span className="text-sm text-ink/60">{label}</span>
       <strong className="mt-2 block text-2xl">{value}</strong>
     </div>
@@ -76,7 +76,7 @@ function Card({ label, value }: { label: string; value: string }) {
 
 function Chart({ title, dataKey, color }: { title: string; dataKey: "users" | "calculations"; color: string }) {
   return (
-    <div className="rounded-lg border border-ink/10 bg-white p-5">
+    <div className="card p-5">
       <h2 className="font-semibold">{title}</h2>
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">

@@ -1,18 +1,22 @@
-import { UserPlus } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { AuthCard, FormMessage } from "../components/AuthCard";
 import { register } from "../lib/api";
 
 export function RegisterPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setStatus(null);
-    const form = new FormData(event.currentTarget);
+    setIsLoading(true);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
 
     try {
       await register({
@@ -20,42 +24,48 @@ export function RegisterPage() {
         email: String(form.get("email") || ""),
         password: String(form.get("password") || ""),
       });
-      setStatus("Cadastro criado. Confira seu email para confirmar a conta.");
-      event.currentTarget.reset();
+      setStatus("Conta criada. Confira seu email para confirmar o cadastro.");
+      formElement.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
   return (
-    <section className="mx-auto max-w-md rounded-lg border border-ink/10 bg-white p-6">
-      <div className="mb-5 flex items-center gap-2">
-        <UserPlus size={20} />
-        <h1 className="text-xl font-semibold">Criar conta</h1>
-      </div>
+    <AuthCard
+      eyebrow="Grátis"
+      title="Criar conta"
+      description="Salve suas simulações e compare propostas ao longo da negociação."
+    >
       <form onSubmit={handleSubmit} className="grid gap-4">
         <div className="grid gap-1.5">
           <label htmlFor="name">Nome</label>
-          <input id="name" name="name" required />
+          <input id="name" name="name" autoComplete="name" required />
         </div>
         <div className="grid gap-1.5">
           <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" required />
+          <input id="email" name="email" type="email" autoComplete="email" placeholder="voce@email.com" required />
         </div>
         <div className="grid gap-1.5">
           <label htmlFor="password">Senha</label>
-          <input id="password" name="password" type="password" minLength={8} required />
+          <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
+          <span className="hint">Mínimo de 8 caracteres.</span>
         </div>
-        {status ? <p className="text-sm text-mint">{status}</p> : null}
-        {error ? <p className="text-sm text-clay">{error}</p> : null}
-        <button className="inline-flex items-center justify-center gap-2 rounded-md bg-mint px-4 py-2 font-semibold text-white">
-          <UserPlus size={18} />
-          Cadastrar
+        {status ? <FormMessage tone="success">{status}</FormMessage> : null}
+        {error ? <FormMessage tone="error">{error}</FormMessage> : null}
+        <button className="btn-primary w-full" disabled={isLoading}>
+          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
+          Criar conta
         </button>
-        <Link to="/login" className="text-center text-sm text-ink/70 hover:text-ink">
-          Já tenho conta
-        </Link>
       </form>
-    </section>
+      <p className="mt-5 text-center text-sm text-ink/60">
+        Já tem conta?{" "}
+        <Link to="/login" className="font-semibold text-mint hover:text-mint-dark">
+          Entrar
+        </Link>
+      </p>
+    </AuthCard>
   );
 }
