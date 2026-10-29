@@ -1,5 +1,6 @@
-import { Clock, Copy } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { fetchMyCalculations, getToken } from "../lib/api";
 import { useAuth } from "../lib/demoAuth";
@@ -68,52 +69,68 @@ export function HistoryPage() {
 
   return (
     <section>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Clock size={20} />
-          <h1 className="text-2xl font-semibold">Histórico do usuário</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">Sua conta</p>
+          <h1 className="mt-2 text-3xl font-extrabold">Histórico de simulações</h1>
         </div>
-        {user?.kind === "demo" ? (
-          <span className="rounded-full bg-lime/60 px-3 py-1 text-xs font-semibold">Dados demonstrativos</span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {user?.kind === "demo" ? <span className="badge bg-lime/70 text-ink">Dados demonstrativos</span> : null}
+          <Link to="/calculadora" className="btn-primary">
+            <Plus size={17} />
+            Nova simulação
+          </Link>
+        </div>
       </div>
-      {error ? <p className="mb-4 rounded-md border border-clay/30 bg-white p-4 text-clay">{error}</p> : null}
-      <div className="overflow-x-auto rounded-lg border border-ink/10 bg-white">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-ink text-white">
-            <tr>
-              <th className="px-4 py-3">Tipo</th>
-              <th className="px-4 py-3">Data</th>
-              <th className="px-4 py-3">Resultado</th>
-              <th className="px-4 py-3">CLT</th>
-              <th className="px-4 py-3">PJ</th>
-              <th className="px-4 py-3">Ação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-t border-ink/10">
-                <td className="px-4 py-3">{formatType(row.type)}</td>
-                <td className="px-4 py-3">{new Date(row.created_at).toLocaleDateString("pt-BR")}</td>
-                <td className="px-4 py-3">{formatRecommendation(row.recommendation)}</td>
-                <td className="px-4 py-3">{BRL.format(row.input_json.clt?.grossSalary ?? 0)}</td>
-                <td className="px-4 py-3">{BRL.format(row.input_json.pj?.monthlyRate ?? 0)}</td>
-                <td className="px-4 py-3">
-                  <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-white">
-                    <Copy size={16} />
-                    Duplicar
-                  </button>
-                </td>
+      {error ? <p className="mb-4 rounded-xl border border-clay/25 bg-clay/5 p-4 text-sm text-clay">{error}</p> : null}
+      {!error && rows.length === 0 ? (
+        <div className="card p-10 text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-mint-soft text-mint">
+            <Clock size={22} />
+          </span>
+          <h2 className="mt-4 text-lg font-bold">Nenhuma simulação salva ainda</h2>
+          <p className="mt-2 text-sm text-ink/60">Simule logado e o resultado aparece aqui automaticamente.</p>
+        </div>
+      ) : null}
+      {rows.length > 0 ? (
+        <div className="card overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="border-b border-line bg-paper/70 text-xs uppercase tracking-[0.08em] text-ink/50">
+              <tr>
+                <th className="px-5 py-3 font-semibold">Simulação</th>
+                <th className="px-5 py-3 font-semibold">Data</th>
+                <th className="px-5 py-3 font-semibold">CLT</th>
+                <th className="px-5 py-3 font-semibold">PJ</th>
+                <th className="px-5 py-3 font-semibold">Resultado</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {!error && rows.length === 0 ? (
-          <p className="p-5 text-sm text-ink/70">Nenhuma simulação salva ainda.</p>
-        ) : null}
-      </div>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-paper/60">
+                  <td className="px-5 py-4 font-medium">{formatType(row.type)}</td>
+                  <td className="px-5 py-4 text-ink/60">{new Date(row.created_at).toLocaleDateString("pt-BR")}</td>
+                  <td className="num px-5 py-4">{BRL.format(row.input_json.clt?.grossSalary ?? 0)}</td>
+                  <td className="num px-5 py-4">{BRL.format(row.input_json.pj?.monthlyRate ?? 0)}</td>
+                  <td className="px-5 py-4">
+                    <RecommendationBadge recommendation={row.recommendation} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function RecommendationBadge({ recommendation }: { recommendation: string }) {
+  const styles: Record<string, string> = {
+    clt: "bg-clt-soft text-clt-ink",
+    pj: "bg-pj-soft text-pj-ink",
+    neutral: "bg-paper text-ink/60",
+  };
+  return <span className={`badge ${styles[recommendation] ?? styles.neutral}`}>{formatRecommendation(recommendation)}</span>;
 }
 
 function formatType(type: string) {
@@ -129,7 +146,7 @@ function formatRecommendation(recommendation: string) {
   const labels: Record<string, string> = {
     clt: "CLT",
     pj: "PJ",
-    neutral: "Neutro",
+    neutral: "Empate",
   };
   return labels[recommendation] ?? recommendation;
 }
