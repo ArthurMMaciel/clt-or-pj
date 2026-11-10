@@ -917,16 +917,16 @@ function Faq() {
 function FinalCta() {
   return (
     <section className="px-2 sm:px-4">
-      <div className="relative isolate overflow-hidden rounded-4xl bg-forest-deep px-6 pb-36 pt-14 text-center text-white sm:rounded-5xl sm:px-12 sm:pb-40 sm:pt-16">
-        <HillsArt className="absolute inset-x-0 bottom-0 -z-10 h-[55%] w-full" />
+      <div className="relative isolate overflow-hidden rounded-4xl bg-forest-deep px-6 pb-16 pt-10 text-center text-white sm:rounded-5xl sm:px-12 sm:pb-20 sm:pt-12">
+        <HillsArt className="absolute inset-x-0 bottom-0 -z-10 h-[42%] w-full" />
         <Reveal>
-          <h2 className="mx-auto max-w-2xl text-3xl font-bold leading-tight sm:text-5xl">
+          <h2 className="mx-auto max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
             Leve números para a negociação.
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-white/70">
+          <p className="mx-auto mt-3 max-w-xl text-white/70">
             Em menos de dois minutos você sabe quanto pedir e qual proposta rende mais no ano.
           </p>
-          <Link to="/calculadora" className="btn-lime btn-lg mt-8">
+          <Link to="/calculadora" className="btn-lime btn-lg mt-6">
             Fazer minha simulação
             <ArrowRight size={18} />
           </Link>

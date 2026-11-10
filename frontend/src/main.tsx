@@ -93,7 +93,6 @@ function AppShell() {
 
       <main className={isLanding ? "w-full flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10"}>{routes}</main>
 
-      <Footer />
     </div>
   );
 }
@@ -110,32 +109,6 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     >
       {children}
     </NavLink>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="mt-8 border-t border-line">
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm text-ink/55 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div className="grid gap-3">
-          <Logo />
-          <p className="max-w-xl leading-6">
-            Simulações educativas com as regras de 2026. Não substituem a análise de um contador ou advogado.
-          </p>
-        </div>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 font-medium" aria-label="Rodapé">
-          <Link to="/calculadora" className="hover:text-ink">
-            Calculadora
-          </Link>
-          <Link to="/privacidade" className="hover:text-ink">
-            Privacidade
-          </Link>
-          <Link to="/termos" className="hover:text-ink">
-            Termos de uso
-          </Link>
-        </nav>
-      </div>
-    </footer>
   );
 }
 
