@@ -72,7 +72,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       ) : null}
 
       <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10 xl:px-12">
-        <div className="max-w-7xl">{children}</div>
+        <div className="w-full">{children}</div>
       </main>
     </div>
   );

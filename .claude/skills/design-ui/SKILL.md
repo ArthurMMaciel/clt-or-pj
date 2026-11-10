@@ -53,7 +53,7 @@ A landing usa arte propria: paisagem de colinas em SVG (`HillsArt`) e mockups do
 ## Estrutura das telas
 
 - Visitante (e paginas publicas, inclusive a landing logado): header no topo, conteudo em `max-w-6xl` e rodape.
-- Logado em `/calculadora`, `/historico`, `/conversas` e `/admin` (`APP_ROUTES`): `AppLayout` (`src/components/AppLayout.tsx`) com sidebar branca presa a borda esquerda, altura total e `border-r` (logo, "Nova simulacao", grupos Simular / Sua conta / Em breve, cartao do usuario com Sair). Abaixo de `lg` vira barra superior com menu que abre a sidebar como gaveta (`animate-drawer-in`, fecha com Esc, clique fora ou troca de rota). O conteudo fica alinhado a esquerda, logo depois da sidebar (`max-w-7xl` sem `mx-auto`): centralizar abre um vao em telas largas e a sidebar parece solta.
+- Logado em `/calculadora`, `/historico`, `/conversas` e `/admin` (`APP_ROUTES`): `AppLayout` (`src/components/AppLayout.tsx`) com sidebar branca presa a borda esquerda, altura total e `border-r` (logo, "Nova simulacao", grupos Simular / Sua conta / Em breve, cartao do usuario com Sair). Abaixo de `lg` vira barra superior com menu que abre a sidebar como gaveta (`animate-drawer-in`, fecha com Esc, clique fora ou troca de rota). O conteudo ocupa toda a largura ao lado da sidebar (sem `max-w` nem `mx-auto`): centralizar ou limitar abre um vao em telas largas e a sidebar parece solta.
 - Rota nova do produto entra em `APP_ROUTES` e num grupo da sidebar.
 
 ## Formularios
