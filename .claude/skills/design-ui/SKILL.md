@@ -11,25 +11,44 @@ Stack: React + Tailwind 3. Tokens em `frontend/tailwind.config.ts`, componentes 
 
 | Token | Uso |
 |---|---|
-| `ink` | Texto e superficies escuras (CTA final, numero do passo) |
+| `ink` | Texto |
+| `forest` (`DEFAULT`, `deep`, `light`) | Superficies escuras de destaque: hero e CTA final da landing, secao "Como calculamos", card do valor recomendado |
 | `paper` / `line` | Fundo da pagina / bordas e divisores |
 | `mint` (`DEFAULT`, `dark`, `soft`) | Marca e acao principal (botoes, foco, destaque do valor recomendado) |
 | `clt` (`DEFAULT`, `soft`, `ink`) | Tudo que representa o lado CLT: barras, badges, veredito CLT |
 | `pj` (`DEFAULT`, `soft`, `ink`) | Tudo que representa o lado PJ |
-| `lime` | Acento pontual (marca-texto do hero, icone do logo, CTA sobre fundo `ink`) |
+| `lime` (`DEFAULT`, `soft`) | Unico acento: palavra-chave do hero, icone do logo, numero recomendado e CTA (`.btn-lime`) sobre fundo `forest` |
 | `clay` | Erros |
 
 Regra: a cor da marca (`mint`) nao representa nenhum dos lados, para o produto nao parecer torcer por CLT ou PJ. Nunca usar azul/amarelo/verde aleatorios para diferenciar opcoes.
 
 ## Tipografia e numeros
 
-- `font-display` (Plus Jakarta Sans) em h1-h3; `font-sans` (Inter) no resto. Fontes carregadas no `index.html`.
+- `font-display` (Inter Tight, pesos 500-800) em h1-h3; `font-sans` (Inter) no resto. Fontes carregadas no `index.html`. Titulos de secao em `font-bold`, hero em ate `text-[4.2rem]`.
 - Todo valor monetario usa a classe `.num` (algarismos tabulares). Resumos usam `BRL0` (sem centavos); detalhamento usa `BRL`.
 - `.eyebrow` para rotulo de secao acima do titulo.
 
+## Formas
+
+Linguagem arredondada (referencia: SaaS atuais tipo dashboard de NPS). `.card` = `rounded-3xl`; blocos grandes da landing `rounded-4xl`/`rounded-5xl`; inputs `rounded-xl`; botoes, badges e toggles `rounded-full`; mini-cards internos (`Stat`) `rounded-2xl`. Sombras difusas: `shadow-card` (padrao), `shadow-lift` (destaque/hover), `shadow-float` (elementos flutuando sobre fundo escuro), `shadow-glow` (hover do `.btn-lime`).
+
 ## Componentes base
 
-`.card`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-lg`, `.badge`, `.hint`. Inputs, selects e labels ja vem estilizados pelo `@layer base`.
+`.card`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-lime`, `.btn-lg`, `.badge`, `.hint`, `.eyebrow`. Inputs, selects e labels ja vem estilizados pelo `@layer base`.
+
+## Movimento
+
+Sem biblioteca: `src/lib/motion.tsx` + keyframes do `tailwind.config.ts`.
+
+- `<Reveal delay={ms}>`: entrada no scroll (fade + subida). Em listas, escalonar 60-120 ms por item.
+- `useCountUp(valor, { start })`: numeros contando ate o valor (resultado, mini-simulador).
+- `useInView()`: dispara animacao quando o bloco aparece (barras com `animate-grow-x`).
+- Utilitarios: `animate-fade-up` (entrada do hero, com `animationDelay`), `animate-float`/`animate-float-slow` (chips flutuantes), `animate-pop-in` (troca de veredito), botoes com `hover:-translate-y-px` e `active:scale-[0.97]`.
+- Duracoes entre 150 e 900 ms. `prefers-reduced-motion` desliga tudo (CSS em `styles.css` e checagem nos hooks); nao criar animacao que ignore isso.
+
+## Imagens
+
+A landing usa arte propria: paisagem de colinas em SVG (`HillsArt`) e mockups do produto em HTML (navegador e celular) com numeros reais do motor. Foto externa so com licenca de uso comercial, registrada em `frontend/public/images/CREDITOS.md`. Nao copiar imagens das referencias.
 
 ## Formularios
 
@@ -46,8 +65,10 @@ Ordem fixa: veredito colorido pelo lado vencedor -> barras do pacote anual (CLT 
 ## Textos
 
 - Falar com o usuario final, em segunda pessoa, sem jargao interno. Nunca expor estrategia, notas de produto ou recomendacao de fornecedor na interface.
-- Nao inventar prova social ("mais escolhido", numero de usuarios) sem dado real.
-- Numeros de exemplo na landing vem do motor (ver skill `validar-calculadora`).
+- Nao inventar prova social ("mais escolhido", numero de usuarios, logos de empresas, depoimentos) sem dado real.
+- Numeros de exemplo na landing vem do motor (ver skill `validar-calculadora`). O mini-simulador usa `quickCLT`/`quickPJ` de `src/lib/defaults.ts`, que precisam enviar as mesmas premissas do formulario da calculadora; senao o "PJ para empatar" diverge entre as telas.
+- Copy assertiva, frases curtas, sem antitese ("X, nao Y"). Nao vender recurso que nao existe: a secao de precos so lista o que o codigo entrega.
+- Links da landing para a calculadora usam `?modo=compare|clt_to_pj|pj_to_clt` e, opcionalmente, `salario`, `beneficios`, `nota` (a calculadora preenche e calcula sozinha).
 - Toda tela de resultado e o rodape levam o aviso de simulacao educativa.
 
 ## Verificacao
