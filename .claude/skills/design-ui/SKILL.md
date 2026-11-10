@@ -58,6 +58,10 @@ A landing usa arte propria: paisagem de colinas em SVG (`HillsArt`) e mockups do
 - Booleanos como `Toggle` (pilula), nao checkbox cru.
 - Nomes dos campos (`name=`) sao contrato com `readCLT`/`readPJ`; renomear so junto.
 
+## Autenticacao
+
+Login, cadastro e confirmacao usam `AuthLayout` (`src/components/AuthCard.tsx`): formulario a esquerda e painel `forest` com `HillsArt` e card de exemplo (`EXAMPLE` de `src/lib/example.ts`) a direita; no celular o painel vira um cabecalho compacto. Campos com `Field`/`PasswordField` (erro inline com `aria-invalid`, mostrar/ocultar senha), validacao no cliente com `noValidate`, erro do servidor em `FormMessage` (treme a cada tentativa) e sucesso em `SuccessState`.
+
 ## Resultado
 
 Ordem fixa: veredito colorido pelo lado vencedor -> barras do pacote anual (CLT vs PJ) -> 4 numeros-chave (`Stat`) -> quanto separar por mes -> `<details>` "Como chegamos nesse numero" -> aviso legal. No celular, rolar ate o resultado depois do calculo.

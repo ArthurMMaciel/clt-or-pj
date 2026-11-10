@@ -192,6 +192,11 @@ export async function login(payload: { email: string; password: string }) {
   });
 
   if (!response.ok) {
+    // A API so responde "email not confirmed" depois de validar a senha, entao a mensagem nao revela contas.
+    const body = await response.json().catch(() => null);
+    if (body?.error === "email not confirmed") {
+      throw new Error("Confirme seu email antes de entrar. O link foi enviado quando você criou a conta.");
+    }
     throw new Error("Email ou senha inválidos.");
   }
 
