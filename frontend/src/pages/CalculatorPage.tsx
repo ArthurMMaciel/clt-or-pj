@@ -10,7 +10,8 @@ import {
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   cltToPj,
@@ -21,6 +22,7 @@ import {
   type EquivalentResult,
   type PJPayload,
 } from "../lib/api";
+import { defaultPJAssumptions, PRO_LABORE_RATE } from "../lib/defaults";
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -57,12 +59,39 @@ const modes: Array<{
   { mode: "pj_to_clt", label: "Quanto vale em CLT", description: "Tenho só a proposta PJ", icon: ArrowLeftRight },
 ];
 
+type Prefill = { salary?: number; benefits?: number; pjRate?: number };
+
+// Valores vindos da landing (?modo=&salario=&beneficios=&nota=).
+function readPrefill(params: URLSearchParams): { mode: CalculatorMode; prefill: Prefill; hasValues: boolean } {
+  const rawMode = params.get("modo");
+  const mode: CalculatorMode = rawMode === "clt_to_pj" || rawMode === "pj_to_clt" ? rawMode : "compare";
+  const read = (key: string) => {
+    const value = Number(params.get(key));
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+  };
+  const prefill = { salary: read("salario"), benefits: read("beneficios"), pjRate: read("nota") };
+  return { mode, prefill, hasValues: prefill.salary !== undefined || prefill.pjRate !== undefined };
+}
+
 export function CalculatorPage() {
-  const [mode, setMode] = useState<CalculatorMode>("compare");
+  const [searchParams] = useSearchParams();
+  const [initial] = useState(() => readPrefill(searchParams));
+  const [mode, setMode] = useState<CalculatorMode>(initial.mode);
+  const formRef = useRef<HTMLFormElement>(null);
   const [result, setResult] = useState<ResultState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLElement>(null);
+
+  // Quem chega da landing com valores ja ve o resultado calculado.
+  // O ref evita calcular duas vezes (StrictMode roda o efeito em dobro e, logado, salvaria duplicado no historico).
+  const autoSubmitted = useRef(false);
+  useEffect(() => {
+    if (initial.hasValues && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      formRef.current?.requestSubmit();
+    }
+  }, [initial.hasValues]);
 
   function selectMode(nextMode: CalculatorMode) {
     setMode(nextMode);
@@ -161,9 +190,9 @@ export function CalculatorPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <form onSubmit={handleSubmit} className="grid content-start gap-5">
-          {showCLT && <CLTFields />}
-          {showPJ && <PJFields />}
+        <form ref={formRef} onSubmit={handleSubmit} className="grid content-start gap-5">
+          {showCLT && <CLTFields prefill={initial.prefill} />}
+          {showPJ && <PJFields prefill={initial.prefill} />}
           {mode === "clt_to_pj" ? (
             <p className="flex gap-2 rounded-xl border border-line bg-white p-4 text-sm text-ink/65">
               <Info size={18} className="mt-0.5 shrink-0 text-ink/40" />
@@ -227,41 +256,16 @@ function readPJ(form: FormData): PJPayload {
   };
 }
 
-function defaultPJAssumptions(): PJPayload {
-  return {
-    monthlyRate: 1,
-    taxRegime: "auto",
-    effectiveTaxRate: 0.06,
-    grossRevenueLast12Months: 0,
-    payrollLast12Months: 0,
-    proLabore: 0,
-    proLaboreRate: 0.28,
-    paidMonthsPerYear: 12,
-    monthlyAccountingCost: 250,
-    monthlyHealthPlanCost: 700,
-    otherMonthlyCosts: 0,
-    vacationReserveRate: 0.0833,
-    thirteenthReserveRate: 0.0833,
-    fgtsReserveRate: 0.08,
-    emergencyReserveRate: 0.1,
-    contractRisk: "medium",
-    noticeDays: 30,
-    hasPaidVacation: false,
-    allowsOtherClients: true,
-    requiresExclusivity: false,
-  };
-}
-
-function CLTFields() {
+function CLTFields({ prefill }: { prefill: Prefill }) {
   return (
     <FormSection side="clt" title="Proposta CLT" icon={Building2}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <MoneyField name="cltGrossSalary" label="Salário bruto mensal" defaultValue="10000" />
+        <MoneyField name="cltGrossSalary" label="Salário bruto mensal" defaultValue={String(prefill.salary ?? 10000)} />
         <MoneyField
           name="cltMonthlyBenefits"
           label="Benefícios por mês"
           hint="VR, VA, auxílio home office e similares."
-          defaultValue="1000"
+          defaultValue={String(prefill.benefits ?? (prefill.salary ? 0 : 1000))}
         />
         <MoneyField name="cltAnnualBonus" label="Bônus anual" hint="Tributado como salário." defaultValue="0" />
         <MoneyField name="cltAnnualPlr" label="PLR anual" hint="Tem tabela de IR própria." defaultValue="0" />
@@ -298,13 +302,16 @@ function CLTFields() {
   );
 }
 
-function PJFields() {
+function PJFields({ prefill }: { prefill: Prefill }) {
   const [regime, setRegime] = useState("auto");
+  // Pro-labore e faturamento acompanham a nota recebida da landing (28% para o Fator R, nota x 12).
+  const rate = prefill.pjRate ?? 15000;
+  const proLabore = Math.round(rate * PRO_LABORE_RATE);
 
   return (
     <FormSection side="pj" title="Proposta PJ" icon={BriefcaseBusiness}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <MoneyField name="pjMonthlyRate" label="Valor mensal da nota" defaultValue="15000" />
+        <MoneyField name="pjMonthlyRate" label="Valor mensal da nota" defaultValue={String(rate)} />
         <NumberField
           name="pjPaidMonthsPerYear"
           label="Meses faturados no ano"
@@ -356,15 +363,15 @@ function PJFields() {
           ) : (
             <input type="hidden" name="pjEffectiveTaxRate" value="6" />
           )}
-          <MoneyField name="pjProLabore" label="Pró-labore mensal" hint="Deixe 28% do faturamento para o Fator R." defaultValue="4200" />
+          <MoneyField name="pjProLabore" label="Pró-labore mensal" hint="Deixe 28% do faturamento para o Fator R." defaultValue={String(proLabore)} />
           <NumberField name="pjProLaboreRate" label="Pró-labore automático" defaultValue="28" suffix="%" />
           <MoneyField
             name="pjGrossRevenueLast12Months"
             label="Faturamento dos últimos 12 meses"
             hint="Empresa nova: valor mensal x 12."
-            defaultValue="180000"
+            defaultValue={String(rate * 12)}
           />
-          <MoneyField name="pjPayrollLast12Months" label="Pró-labore dos últimos 12 meses" defaultValue="50400" />
+          <MoneyField name="pjPayrollLast12Months" label="Pró-labore dos últimos 12 meses" defaultValue={String(proLabore * 12)} />
           <MoneyField name="pjOtherMonthlyCosts" label="Outros custos mensais" defaultValue="0" />
         </div>
 
