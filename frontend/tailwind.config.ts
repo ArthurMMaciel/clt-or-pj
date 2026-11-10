@@ -48,6 +48,10 @@ export default {
           "0%": { opacity: "0", transform: "scale(0.94)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        "drawer-in": {
+          from: { transform: "translateX(-100%)" },
+          to: { transform: "translateX(0)" },
+        },
         shake: {
           "0%, 100%": { transform: "translateX(0)" },
           "20%, 60%": { transform: "translateX(-6px)" },
@@ -62,6 +66,7 @@ export default {
         "grow-x": "grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both",
         "pop-in": "pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both",
         shake: "shake 0.4s ease-in-out",
+        "drawer-in": "drawer-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },
