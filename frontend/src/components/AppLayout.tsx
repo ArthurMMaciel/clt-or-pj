@@ -35,8 +35,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }, [open]);
 
   return (
-    <div className="min-h-screen bg-paper text-ink lg:grid lg:grid-cols-[17rem_1fr]">
-      <aside className="sticky top-0 hidden h-screen p-3 lg:block">
+    <div className="min-h-screen bg-paper text-ink lg:grid lg:grid-cols-[16.5rem_1fr]">
+      <aside className="sticky top-0 hidden h-screen border-r border-line bg-white lg:block">
         <SidebarPanel />
       </aside>
 
@@ -62,14 +62,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
             aria-label="Fechar menu"
             onClick={() => setOpen(false)}
           />
-          <div id="app-drawer" className="absolute inset-y-0 left-0 w-[19rem] max-w-[85vw] animate-drawer-in p-3">
+          <div
+            id="app-drawer"
+            className="absolute inset-y-0 left-0 w-[18rem] max-w-[85vw] animate-drawer-in overflow-hidden rounded-r-3xl bg-white shadow-float"
+          >
             <SidebarPanel onClose={() => setOpen(false)} />
           </div>
         </div>
       ) : null}
 
-      <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-        <div className="mx-auto max-w-6xl">{children}</div>
+      <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10 xl:px-12">
+        <div className="max-w-7xl">{children}</div>
       </main>
     </div>
   );
@@ -85,7 +88,7 @@ function SidebarPanel({ onClose }: { onClose?: () => void }) {
     .join("");
 
   return (
-    <nav className="flex h-full flex-col rounded-3xl border border-line/80 bg-white p-4 shadow-card" aria-label="Principal">
+    <nav className="flex h-full flex-col overflow-y-auto p-5" aria-label="Principal">
       <div className="flex items-center justify-between px-1">
         <Logo />
         {onClose ? (
@@ -129,8 +132,10 @@ function SidebarPanel({ onClose }: { onClose?: () => void }) {
                         >
                           <item.icon size={16} />
                         </span>
-                        {item.label}
-                        {item.soon ? <span className="badge ml-auto bg-lime-soft px-2 py-0.5 text-[10px] text-forest">Breve</span> : null}
+                        <span className="truncate">{item.label}</span>
+                        {item.soon ? (
+                          <span className="badge ml-auto shrink-0 bg-lime-soft px-2 py-0.5 text-[10px] text-forest">Breve</span>
+                        ) : null}
                       </>
                     )}
                   </NavLink>
