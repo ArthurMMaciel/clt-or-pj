@@ -63,7 +63,7 @@ A landing usa arte propria: paisagem de colinas em SVG (`HillsArt`) e mockups do
 - Todo campo com jargao ganha `hint` em linguagem simples. Sufixos (`%`, `dias`, `meses`) dentro do input.
 - Booleanos como `Toggle` (pilula), nao checkbox cru.
 - Nomes dos campos (`name=`) sao contrato com `readCLT`/`readPJ`; renomear so junto.
-- Abaixo de `lg` a calculadora vira etapas (Proposta CLT -> Proposta PJ -> Contrato PJ, conforme o modo) com `StepProgress`; as secoes das outras etapas ficam com `max-lg:hidden` e continuam no `FormData`. Enter ou "Continuar" so avanca; o botao de calcular sempre calcula.
+- No modo "comparar" o formulario tem duas abas, Proposta CLT e Proposta PJ (com o Contrato PJ), em todas as larguras, para evitar rolagem; cada aba mostra o valor digitado. A aba inativa fica `hidden` e continua no `FormData`. O botao de calcular mora no topo da coluna do resultado no desktop (`form=` aponta para o formulario) e no fim da aba PJ no celular; no celular, Enter na aba CLT so leva para a aba PJ.
 - Pro-labore, faturamento 12m e folha 12m comecam vazios ("Automatico") e vao como 0: o motor usa 28% da nota, nota x 12 e pro-labore x 12, inclusive na busca do valor de empate. Nao voltar a preencher valores fixos, senao quem troca so a nota fica com Fator R e faixa do Simples errados.
 
 ## Autenticacao

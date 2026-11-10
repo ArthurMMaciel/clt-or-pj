@@ -76,69 +76,83 @@ function readPrefill(params: URLSearchParams): { mode: CalculatorMode; prefill: 
   return { mode, prefill, hasValues: prefill.salary !== undefined || prefill.pjRate !== undefined };
 }
 
-type StepId = "clt" | "pj" | "contract";
+type TabId = "clt" | "pj";
 
-const stepLabels: Record<StepId, string> = { clt: "Proposta CLT", pj: "Proposta PJ", contract: "Contrato PJ" };
-
-function stepsFor(mode: CalculatorMode): StepId[] {
-  if (mode === "clt_to_pj") return ["clt"];
-  if (mode === "pj_to_clt") return ["pj", "contract"];
-  return ["clt", "pj", "contract"];
+// So o modo "comparar" tem os dois lados; nele o formulario vira duas abas para nao precisar rolar.
+function tabsFor(mode: CalculatorMode): TabId[] {
+  return mode === "compare" ? ["clt", "pj"] : [];
 }
 
-// Abaixo de lg o formulario vira etapas; no desktop todas as secoes aparecem juntas.
-function isStepped() {
+// Abaixo de lg o resultado fica embaixo do formulario.
+function isNarrow() {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
 }
+
+const FORM_ID = "calculator-form";
 
 export function CalculatorPage() {
   const [searchParams] = useSearchParams();
   const [initial] = useState(() => readPrefill(searchParams));
   const [mode, setMode] = useState<CalculatorMode>(initial.mode);
-  const [step, setStep] = useState(0);
+  const [tab, setTab] = useState<TabId>("clt");
+  const [summary, setSummary] = useState({ salary: initial.prefill.salary ?? 10000, pjRate: initial.prefill.pjRate ?? 15000 });
   const formRef = useRef<HTMLFormElement>(null);
   const [result, setResult] = useState<ResultState | null>(null);
   const [resultVersion, setResultVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLElement>(null);
-  const bypassSteps = useRef(false);
 
-  const steps = stepsFor(mode);
-  const isLastStep = step >= steps.length - 1;
+  const tabs = tabsFor(mode);
+  const hasTabs = tabs.length > 1;
 
   // Quem chega da landing com valores ja ve o resultado calculado.
   // O ref evita calcular duas vezes (StrictMode roda o efeito em dobro e, logado, salvaria duplicado no historico).
   const autoSubmitted = useRef(false);
+  const autoSubmitting = useRef(false);
   useEffect(() => {
     if (initial.hasValues && !autoSubmitted.current) {
       autoSubmitted.current = true;
-      bypassSteps.current = true;
+      autoSubmitting.current = true;
       formRef.current?.requestSubmit();
     }
   }, [initial.hasValues]);
 
   function selectMode(nextMode: CalculatorMode) {
     setMode(nextMode);
-    setStep(0);
+    setTab("clt");
     setResult(null);
     setError(null);
   }
 
-  function goToStep(next: number) {
-    setStep(Math.max(0, Math.min(next, steps.length - 1)));
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function goToTab(next: TabId) {
+    setTab(next);
+    if (isNarrow()) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  // Valores mostrados nas abas, lidos do proprio formulario a cada digitacao.
+  function handleInput() {
+    if (!formRef.current) return;
+    const form = new FormData(formRef.current);
+    setSummary((current) => ({
+      salary: form.has("cltGrossSalary") ? number(form, "cltGrossSalary") : current.salary,
+      pjRate: form.has("pjMonthlyRate") ? number(form, "pjMonthlyRate") : current.pjRate,
+    }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    // No celular, Enter ou "Continuar" antes da ultima etapa so avanca.
-    if (!bypassSteps.current && isStepped() && !isLastStep) {
-      goToStep(step + 1);
+    // No celular, Enter na aba CLT leva para a aba PJ em vez de calcular com a PJ ainda nao revisada.
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const isAuto = autoSubmitting.current;
+    autoSubmitting.current = false;
+    if (hasTabs && tab === "clt" && isNarrow() && !submitter && !isAuto) {
+      goToTab("pj");
       return;
     }
-    bypassSteps.current = false;
 
     setIsLoading(true);
     setError(null);
@@ -173,15 +187,21 @@ export function CalculatorPage() {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setIsLoading(false);
-      // No celular o resultado fica abaixo do formulario.
-      if (isStepped()) {
+      if (isNarrow()) {
         requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }
     }
   }
 
-  // Secao visivel no celular so na sua etapa; no desktop sempre. Inputs escondidos continuam no FormData.
-  const sectionClass = (id: StepId) => (steps[step] === id ? "max-lg:animate-fade-up" : "max-lg:hidden");
+  // Com abas, so a aba ativa aparece. Inputs escondidos continuam no FormData.
+  const panelClass = (id: TabId) => (!hasTabs || tab === id ? "grid gap-5 animate-fade-up" : "hidden");
+
+  const submitButton = (className: string) => (
+    <button type="submit" form={FORM_ID} className={`btn-primary btn-lg w-full ${className}`} disabled={isLoading}>
+      {isLoading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
+      {isLoading ? "Calculando..." : submitLabel(mode)}
+    </button>
+  );
 
   return (
     <div>
@@ -230,24 +250,40 @@ export function CalculatorPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <form ref={formRef} onSubmit={handleSubmit} className="grid scroll-mt-24 content-start gap-5">
-          {steps.length > 1 ? <StepProgress steps={steps} current={step} onSelect={goToStep} /> : null}
+        <form
+          id={FORM_ID}
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onInput={handleInput}
+          className="grid scroll-mt-24 content-start gap-5"
+        >
+          {hasTabs ? <ProposalTabs active={tab} onSelect={goToTab} salary={summary.salary} pjRate={summary.pjRate} /> : null}
 
           {mode !== "pj_to_clt" ? (
-            <div className={sectionClass("clt")}>
+            <div className={panelClass("clt")} role={hasTabs ? "tabpanel" : undefined} id="painel-clt">
               <CLTFields prefill={initial.prefill} />
+              {hasTabs ? (
+                <button type="button" className="btn-secondary btn-lg w-full sm:w-fit" onClick={() => goToTab("pj")}>
+                  Próximo: proposta PJ
+                  <ArrowRight size={18} />
+                </button>
+              ) : null}
             </div>
           ) : null}
+
           {mode !== "clt_to_pj" ? (
-            <>
-              <div className={sectionClass("pj")}>
-                <PJFields prefill={initial.prefill} />
-              </div>
-              <div className={sectionClass("contract")}>
-                <ContractFields />
-              </div>
-            </>
+            <div className={panelClass("pj")} role={hasTabs ? "tabpanel" : undefined} id="painel-pj">
+              <PJFields prefill={initial.prefill} />
+              <ContractFields />
+              {hasTabs ? (
+                <button type="button" className="btn-ghost w-fit px-0 hover:bg-transparent" onClick={() => goToTab("clt")}>
+                  <ArrowLeft size={17} />
+                  Voltar para a proposta CLT
+                </button>
+              ) : null}
+            </div>
           ) : null}
+
           {mode === "clt_to_pj" ? (
             <p className="flex gap-2 rounded-2xl border border-line bg-white p-4 text-sm text-ink/65">
               <Info size={18} className="mt-0.5 shrink-0 text-ink/40" />
@@ -256,40 +292,17 @@ export function CalculatorPage() {
             </p>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-3">
-            {step > 0 ? (
-              <button
-                type="button"
-                className="btn-secondary btn-lg px-4 lg:hidden"
-                aria-label="Voltar para a etapa anterior"
-                onClick={() => goToStep(step - 1)}
-              >
-                <ArrowLeft size={18} />
-                <span className="hidden sm:inline">Voltar</span>
-              </button>
-            ) : null}
-            {!isLastStep ? (
-              <button type="submit" className="btn-primary btn-lg flex-1 lg:hidden">
-                Continuar
-                <ArrowRight size={18} />
-              </button>
-            ) : null}
-            <button
-              type="submit"
-              className={`btn-primary btn-lg flex-1 sm:flex-none ${isLastStep ? "" : "max-lg:hidden"}`}
-              disabled={isLoading}
-              onClick={() => {
-                // O botao de calcular sempre calcula, em qualquer etapa (no desktop ele e o unico botao).
-                bypassSteps.current = true;
-              }}
-            >
-              {isLoading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
-              {isLoading ? "Calculando..." : submitLabel(mode)}
-            </button>
-          </div>
+          {/* No celular o botao fica no fim do formulario; no desktop ele mora na coluna do resultado. */}
+          {!hasTabs || tab === "pj" ? submitButton("lg:hidden") : null}
         </form>
 
-        <aside ref={resultRef} className="scroll-mt-24 lg:sticky lg:top-6 lg:self-start">
+        <aside ref={resultRef} className="grid scroll-mt-24 content-start gap-4 lg:sticky lg:top-6 lg:self-start">
+          <div className="card hidden p-4 lg:block">
+            {submitButton("")}
+            <p className="hint mt-2.5 text-center">
+              {hasTabs ? "Usa os valores das duas abas, CLT e PJ." : "O resultado aparece logo abaixo."}
+            </p>
+          </div>
           <ResultPanel key={resultVersion} mode={mode} result={result} error={error} />
         </aside>
       </div>
@@ -297,29 +310,54 @@ export function CalculatorPage() {
   );
 }
 
-function StepProgress({ steps, current, onSelect }: { steps: StepId[]; current: number; onSelect: (index: number) => void }) {
+function ProposalTabs({
+  active,
+  onSelect,
+  salary,
+  pjRate,
+}: {
+  active: TabId;
+  onSelect: (tab: TabId) => void;
+  salary: number;
+  pjRate: number;
+}) {
+  const items: Array<{ id: TabId; label: string; value: number; icon: LucideIcon; on: string; dot: string }> = [
+    { id: "clt", label: "Proposta CLT", value: salary, icon: Building2, on: "border-clt bg-clt-soft text-clt-ink", dot: "bg-clt" },
+    { id: "pj", label: "Proposta PJ", value: pjRate, icon: BriefcaseBusiness, on: "border-pj bg-pj-soft text-pj-ink", dot: "bg-pj" },
+  ];
+
   return (
-    <div className="card p-4 lg:hidden">
-      <div className="flex items-center justify-between text-xs font-semibold text-ink/55">
-        <span>
-          Etapa {current + 1} de {steps.length}
-        </span>
-        <span className="text-ink">{stepLabels[steps[current]]}</span>
-      </div>
-      <div className="mt-3 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
-        {steps.map((id, index) => (
+    <div role="tablist" aria-label="Propostas" className="grid grid-cols-2 gap-2">
+      {items.map((item) => {
+        const isActive = active === item.id;
+        return (
           <button
-            key={id}
+            key={item.id}
             type="button"
-            aria-label={`Ir para ${stepLabels[id]}`}
-            aria-current={index === current ? "step" : undefined}
-            className="h-2 overflow-hidden rounded-full bg-paper"
-            onClick={() => onSelect(index)}
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`painel-${item.id}`}
+            onClick={() => onSelect(item.id)}
+            className={`flex items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left transition duration-300 ${
+              isActive ? `${item.on} shadow-card` : "border-transparent bg-white text-ink/60 hover:border-line"
+            }`}
           >
-            <span className={`block h-full rounded-full bg-mint transition-all duration-500 ${index <= current ? "w-full" : "w-0"}`} />
+            <span
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${isActive ? "bg-white/70" : "bg-paper"}`}
+            >
+              <item.icon size={17} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{item.label}</span>
+              <span className="num flex items-center gap-1.5 text-xs opacity-80">
+                <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} aria-hidden />
+                {BRL0.format(item.value)}
+                {item.id === "pj" ? " /mês" : " bruto"}
+              </span>
+            </span>
           </button>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
