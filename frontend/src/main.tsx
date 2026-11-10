@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Scale, Sparkles } from "lucide-react";
-import { BrowserRouter, Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 
 import { AuthProvider, useAuth } from "./lib/demoAuth";
 import { AdminDashboard } from "./pages/AdminDashboard";
@@ -10,6 +10,7 @@ import { CalculatorPage } from "./pages/CalculatorPage";
 import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { LandingPage } from "./pages/LandingPage";
+import { LegalDraftPage } from "./pages/LegalDraftPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import "./styles.css";
@@ -30,10 +31,13 @@ function App() {
 
 function AppShell() {
   const { user, logout } = useAuth();
+  const { pathname } = useLocation();
+  // A landing ocupa a largura toda (hero e CTA em blocos de borda a borda); as demais telas usam o container.
+  const isLanding = pathname === "/";
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="sticky top-0 z-20 border-b border-line bg-white/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/80 backdrop-blur-md">
         <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <Logo />
           <div className="flex items-center gap-1 text-sm">
@@ -69,7 +73,7 @@ function AppShell() {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
+      <main className={isLanding ? "w-full flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10"}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/calculadora" element={<CalculatorPage />} />
@@ -78,6 +82,8 @@ function AppShell() {
           <Route path="/confirmar-email" element={<ConfirmEmailPage />} />
           <Route path="/historico" element={user ? <HistoryPage /> : <Navigate to="/login" replace />} />
           <Route path="/conversas" element={<ComingSoonAI />} />
+          <Route path="/privacidade" element={<LegalDraftPage kind="privacy" />} />
+          <Route path="/termos" element={<LegalDraftPage kind="terms" />} />
           <Route path="/admin" element={user ? <AdminDashboard /> : <Navigate to="/login" replace />} />
         </Routes>
       </main>
@@ -89,8 +95,8 @@ function AppShell() {
 
 function Logo() {
   return (
-    <Link to="/" className="flex shrink-0 items-center gap-2">
-      <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink text-lime">
+    <Link to="/" className="group flex shrink-0 items-center gap-2">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-lime transition group-hover:rotate-[-8deg]">
         <Scale size={17} />
       </span>
       <span className="font-display text-lg font-extrabold tracking-tight">
@@ -105,8 +111,8 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `whitespace-nowrap rounded-lg px-3 py-2 font-medium transition ${
-          isActive ? "bg-ink/5 text-ink" : "text-ink/60 hover:bg-ink/5 hover:text-ink"
+        `whitespace-nowrap rounded-full px-3.5 py-2 font-medium transition ${
+          isActive ? "bg-white text-ink shadow-sm" : "text-ink/60 hover:bg-ink/5 hover:text-ink"
         }`
       }
     >
@@ -117,12 +123,25 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
 
 function Footer() {
   return (
-    <footer className="border-t border-line bg-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-ink/55 sm:flex-row sm:items-center sm:justify-between">
-        <Logo />
-        <p className="max-w-xl leading-6">
-          Simulações educativas com as regras de 2026. Não substituem a análise de um contador ou advogado.
-        </p>
+    <footer className="mt-8 border-t border-line">
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm text-ink/55 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="grid gap-3">
+          <Logo />
+          <p className="max-w-xl leading-6">
+            Simulações educativas com as regras de 2026. Não substituem a análise de um contador ou advogado.
+          </p>
+        </div>
+        <nav className="flex flex-wrap gap-x-5 gap-y-2 font-medium" aria-label="Rodapé">
+          <Link to="/calculadora" className="hover:text-ink">
+            Calculadora
+          </Link>
+          <Link to="/privacidade" className="hover:text-ink">
+            Privacidade
+          </Link>
+          <Link to="/termos" className="hover:text-ink">
+            Termos de uso
+          </Link>
+        </nav>
       </div>
     </footer>
   );
