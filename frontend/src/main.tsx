@@ -1,9 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Scale, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 
+import { APP_ROUTES, AppLayout } from "./components/AppLayout";
+import { Logo } from "./components/Logo";
 import { AuthProvider, useAuth } from "./lib/demoAuth";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { CalculatorPage } from "./pages/CalculatorPage";
@@ -35,6 +37,26 @@ function AppShell() {
   // A landing ocupa a largura toda (hero e CTA em blocos de borda a borda); as demais telas usam o container.
   const isLanding = pathname === "/";
 
+  const routes = (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/calculadora" element={<CalculatorPage />} />
+      <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/calculadora" replace />} />
+      <Route path="/cadastro" element={!user ? <RegisterPage /> : <Navigate to="/calculadora" replace />} />
+      <Route path="/confirmar-email" element={<ConfirmEmailPage />} />
+      <Route path="/historico" element={user ? <HistoryPage /> : <Navigate to="/login" replace />} />
+      <Route path="/conversas" element={<ComingSoonAI />} />
+      <Route path="/privacidade" element={<LegalDraftPage kind="privacy" />} />
+      <Route path="/termos" element={<LegalDraftPage kind="terms" />} />
+      <Route path="/admin" element={user ? <AdminDashboard /> : <Navigate to="/login" replace />} />
+    </Routes>
+  );
+
+  // Logado, as telas do produto abrem com sidebar; landing e paginas publicas mantem o header.
+  if (user && APP_ROUTES.includes(pathname)) {
+    return <AppLayout>{routes}</AppLayout>;
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/80 backdrop-blur-md">
@@ -44,7 +66,6 @@ function AppShell() {
             <span className="hidden sm:block">
               <NavItem to="/calculadora">Calculadora</NavItem>
             </span>
-            {user ? <NavItem to="/historico">Histórico</NavItem> : null}
             <span
               className="hidden items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-ink/40 sm:inline-flex"
               aria-disabled="true"
@@ -59,50 +80,20 @@ function AppShell() {
               </Link>
             ) : null}
             {user ? (
-              <div className="ml-1 flex items-center gap-3 border-l border-line pl-3">
-                <div className="hidden text-right leading-tight md:block">
-                  <span className="block text-xs font-semibold">{user.name}</span>
-                  <span className="block text-[11px] text-ink/45">{user.kind === "demo" ? "Conta demo" : "Conta ativa"}</span>
-                </div>
-                <button className="btn-secondary px-3 py-2 text-xs" onClick={logout}>
+              <>
+                <NavItem to="/historico">Histórico</NavItem>
+                <button className="btn-secondary ml-1 px-3 py-2 text-xs" onClick={logout}>
                   Sair
                 </button>
-              </div>
+              </>
             ) : null}
           </div>
         </nav>
       </header>
 
-      <main className={isLanding ? "w-full flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10"}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/calculadora" element={<CalculatorPage />} />
-          <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/calculadora" replace />} />
-          <Route path="/cadastro" element={!user ? <RegisterPage /> : <Navigate to="/calculadora" replace />} />
-          <Route path="/confirmar-email" element={<ConfirmEmailPage />} />
-          <Route path="/historico" element={user ? <HistoryPage /> : <Navigate to="/login" replace />} />
-          <Route path="/conversas" element={<ComingSoonAI />} />
-          <Route path="/privacidade" element={<LegalDraftPage kind="privacy" />} />
-          <Route path="/termos" element={<LegalDraftPage kind="terms" />} />
-          <Route path="/admin" element={user ? <AdminDashboard /> : <Navigate to="/login" replace />} />
-        </Routes>
-      </main>
+      <main className={isLanding ? "w-full flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10"}>{routes}</main>
 
-      <Footer />
     </div>
-  );
-}
-
-function Logo() {
-  return (
-    <Link to="/" className="group flex shrink-0 items-center gap-2">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-lime transition group-hover:rotate-[-8deg]">
-        <Scale size={17} />
-      </span>
-      <span className="font-display text-lg font-extrabold tracking-tight">
-        CLT <span className="text-ink/40">ou</span> PJ
-      </span>
-    </Link>
   );
 }
 
@@ -118,32 +109,6 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     >
       {children}
     </NavLink>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="mt-8 border-t border-line">
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm text-ink/55 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div className="grid gap-3">
-          <Logo />
-          <p className="max-w-xl leading-6">
-            Simulações educativas com as regras de 2026. Não substituem a análise de um contador ou advogado.
-          </p>
-        </div>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 font-medium" aria-label="Rodapé">
-          <Link to="/calculadora" className="hover:text-ink">
-            Calculadora
-          </Link>
-          <Link to="/privacidade" className="hover:text-ink">
-            Privacidade
-          </Link>
-          <Link to="/termos" className="hover:text-ink">
-            Termos de uso
-          </Link>
-        </nav>
-      </div>
-    </footer>
   );
 }
 

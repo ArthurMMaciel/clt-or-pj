@@ -1,5 +1,7 @@
 import {
+  ArrowLeft,
   ArrowLeftRight,
+  ArrowRight,
   BriefcaseBusiness,
   Building2,
   ChevronDown,
@@ -22,7 +24,8 @@ import {
   type EquivalentResult,
   type PJPayload,
 } from "../lib/api";
-import { defaultPJAssumptions, PRO_LABORE_RATE } from "../lib/defaults";
+import { defaultPJAssumptions } from "../lib/defaults";
+import { useCountUp } from "../lib/motion";
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -73,34 +76,84 @@ function readPrefill(params: URLSearchParams): { mode: CalculatorMode; prefill: 
   return { mode, prefill, hasValues: prefill.salary !== undefined || prefill.pjRate !== undefined };
 }
 
+type TabId = "clt" | "pj";
+
+// So o modo "comparar" tem os dois lados; nele o formulario vira duas abas para nao precisar rolar.
+function tabsFor(mode: CalculatorMode): TabId[] {
+  return mode === "compare" ? ["clt", "pj"] : [];
+}
+
+// Abaixo de lg o resultado fica embaixo do formulario.
+function isNarrow() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
+}
+
+const FORM_ID = "calculator-form";
+
 export function CalculatorPage() {
   const [searchParams] = useSearchParams();
   const [initial] = useState(() => readPrefill(searchParams));
   const [mode, setMode] = useState<CalculatorMode>(initial.mode);
+  const [tab, setTab] = useState<TabId>("clt");
+  const [summary, setSummary] = useState({ salary: initial.prefill.salary ?? 10000, pjRate: initial.prefill.pjRate ?? 15000 });
   const formRef = useRef<HTMLFormElement>(null);
   const [result, setResult] = useState<ResultState | null>(null);
+  const [resultVersion, setResultVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLElement>(null);
 
+  const tabs = tabsFor(mode);
+  const hasTabs = tabs.length > 1;
+
   // Quem chega da landing com valores ja ve o resultado calculado.
   // O ref evita calcular duas vezes (StrictMode roda o efeito em dobro e, logado, salvaria duplicado no historico).
   const autoSubmitted = useRef(false);
+  const autoSubmitting = useRef(false);
   useEffect(() => {
     if (initial.hasValues && !autoSubmitted.current) {
       autoSubmitted.current = true;
+      autoSubmitting.current = true;
       formRef.current?.requestSubmit();
     }
   }, [initial.hasValues]);
 
   function selectMode(nextMode: CalculatorMode) {
     setMode(nextMode);
+    setTab("clt");
     setResult(null);
     setError(null);
   }
 
+  function goToTab(next: TabId) {
+    setTab(next);
+    if (isNarrow()) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  // Valores mostrados nas abas, lidos do proprio formulario a cada digitacao.
+  function handleInput() {
+    if (!formRef.current) return;
+    const form = new FormData(formRef.current);
+    setSummary((current) => ({
+      salary: form.has("cltGrossSalary") ? number(form, "cltGrossSalary") : current.salary,
+      pjRate: form.has("pjMonthlyRate") ? number(form, "pjMonthlyRate") : current.pjRate,
+    }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    // No celular, Enter na aba CLT leva para a aba PJ em vez de calcular com a PJ ainda nao revisada.
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const isAuto = autoSubmitting.current;
+    autoSubmitting.current = false;
+    if (hasTabs && tab === "clt" && isNarrow() && !submitter && !isAuto) {
+      goToTab("pj");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -129,34 +182,43 @@ export function CalculatorPage() {
         });
         setResult({ mode, data });
       }
+      setResultVersion((value) => value + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setIsLoading(false);
-      // No celular o resultado fica abaixo do formulario.
-      if (window.innerWidth < 1024) {
+      if (isNarrow()) {
         requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }
     }
   }
 
-  const showCLT = mode === "compare" || mode === "clt_to_pj";
-  const showPJ = mode === "compare" || mode === "pj_to_clt";
+  // Com abas, so a aba ativa aparece. Inputs escondidos continuam no FormData.
+  const panelClass = (id: TabId) => (!hasTabs || tab === id ? "grid gap-5 animate-fade-up" : "hidden");
+
+  const submitButton = (className: string) => (
+    <button type="submit" form={FORM_ID} className={`btn-primary btn-lg w-full ${className}`} disabled={isLoading}>
+      {isLoading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
+      {isLoading ? "Calculando..." : submitLabel(mode)}
+    </button>
+  );
 
   return (
     <div>
-      <div className="mb-8 max-w-3xl">
+      <div className="mb-7 max-w-3xl">
         <p className="eyebrow">Simulador CLT x PJ · regras 2026</p>
-        <h1 className="mt-2 text-3xl font-bold text-ink sm:text-4xl">
-          Compare pelo pacote anual, não só pelo líquido do mês
-        </h1>
+        <h1 className="mt-2 text-3xl font-bold text-ink sm:text-4xl">Quanto sobra no ano em cada proposta?</h1>
         <p className="mt-3 text-ink/65">
           Impostos, 13º, férias, FGTS, PLR, Simples Nacional e margem de risco entram na conta. Os campos já vêm com um
           exemplo preenchido: troque pelos números da sua proposta.
         </p>
       </div>
 
-      <div role="tablist" aria-label="Tipo de simulação" className="mb-6 grid gap-2 sm:grid-cols-3">
+      <div
+        role="tablist"
+        aria-label="Tipo de simulação"
+        className="mb-6 grid gap-1.5 rounded-3xl border border-line bg-white p-1.5 shadow-card sm:grid-cols-3"
+      >
         {modes.map((item) => {
           const active = mode === item.mode;
           const Icon = item.icon;
@@ -166,23 +228,21 @@ export function CalculatorPage() {
               type="button"
               role="tab"
               aria-selected={active}
-              className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                active
-                  ? "border-mint bg-white shadow-card ring-4 ring-mint/10"
-                  : "border-line bg-white/60 hover:border-ink/20 hover:bg-white"
+              className={`flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left transition duration-300 ${
+                active ? "bg-forest text-white shadow-float" : "hover:bg-paper"
               }`}
               onClick={() => selectMode(item.mode)}
             >
               <span
-                className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
-                  active ? "bg-mint text-white" : "bg-paper text-ink/55"
+                className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition ${
+                  active ? "bg-lime text-forest-deep" : "bg-paper text-ink/55"
                 }`}
               >
                 <Icon size={17} />
               </span>
-              <span>
-                <span className={`block text-sm font-semibold ${active ? "text-ink" : "text-ink/75"}`}>{item.label}</span>
-                <span className="block text-xs text-ink/50">{item.description}</span>
+              <span className="min-w-0">
+                <span className={`block text-sm font-semibold ${active ? "text-white" : "text-ink/80"}`}>{item.label}</span>
+                <span className={`block text-xs ${active ? "text-white/60" : "text-ink/50"}`}>{item.description}</span>
               </span>
             </button>
           );
@@ -190,27 +250,114 @@ export function CalculatorPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <form ref={formRef} onSubmit={handleSubmit} className="grid content-start gap-5">
-          {showCLT && <CLTFields prefill={initial.prefill} />}
-          {showPJ && <PJFields prefill={initial.prefill} />}
+        <form
+          id={FORM_ID}
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onInput={handleInput}
+          className="grid scroll-mt-24 content-start gap-5"
+        >
+          {hasTabs ? <ProposalTabs active={tab} onSelect={goToTab} salary={summary.salary} pjRate={summary.pjRate} /> : null}
+
+          {mode !== "pj_to_clt" ? (
+            <div className={panelClass("clt")} role={hasTabs ? "tabpanel" : undefined} id="painel-clt">
+              <CLTFields prefill={initial.prefill} />
+              {hasTabs ? (
+                <button type="button" className="btn-secondary btn-lg w-full sm:w-fit" onClick={() => goToTab("pj")}>
+                  Próximo: proposta PJ
+                  <ArrowRight size={18} />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {mode !== "clt_to_pj" ? (
+            <div className={panelClass("pj")} role={hasTabs ? "tabpanel" : undefined} id="painel-pj">
+              <PJFields prefill={initial.prefill} />
+              <ContractFields />
+              {hasTabs ? (
+                <button type="button" className="btn-ghost w-fit px-0 hover:bg-transparent" onClick={() => goToTab("clt")}>
+                  <ArrowLeft size={17} />
+                  Voltar para a proposta CLT
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
           {mode === "clt_to_pj" ? (
-            <p className="flex gap-2 rounded-xl border border-line bg-white p-4 text-sm text-ink/65">
+            <p className="flex gap-2 rounded-2xl border border-line bg-white p-4 text-sm text-ink/65">
               <Info size={18} className="mt-0.5 shrink-0 text-ink/40" />
               Para o lado PJ usamos premissas padrão: Simples Nacional com Fator R, contador de R$ 250, plano de saúde de
               R$ 700, 12 meses faturados e margem de risco média.
             </p>
           ) : null}
 
-          <button type="submit" className="btn-primary btn-lg w-full sm:w-fit" disabled={isLoading}>
-            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
-            {isLoading ? "Calculando..." : submitLabel(mode)}
-          </button>
+          {/* No celular o botao fica no fim do formulario; no desktop ele mora na coluna do resultado. */}
+          {!hasTabs || tab === "pj" ? submitButton("lg:hidden") : null}
         </form>
 
-        <aside ref={resultRef} className="scroll-mt-24 lg:sticky lg:top-24 lg:self-start">
-          <ResultPanel mode={mode} result={result} error={error} />
+        <aside ref={resultRef} className="grid scroll-mt-24 content-start gap-4 lg:sticky lg:top-6 lg:self-start">
+          <div className="card hidden p-4 lg:block">
+            {submitButton("")}
+            <p className="hint mt-2.5 text-center">
+              {hasTabs ? "Usa os valores das duas abas, CLT e PJ." : "O resultado aparece logo abaixo."}
+            </p>
+          </div>
+          <ResultPanel key={resultVersion} mode={mode} result={result} error={error} />
         </aside>
       </div>
+    </div>
+  );
+}
+
+function ProposalTabs({
+  active,
+  onSelect,
+  salary,
+  pjRate,
+}: {
+  active: TabId;
+  onSelect: (tab: TabId) => void;
+  salary: number;
+  pjRate: number;
+}) {
+  const items: Array<{ id: TabId; label: string; value: number; icon: LucideIcon; on: string; dot: string }> = [
+    { id: "clt", label: "Proposta CLT", value: salary, icon: Building2, on: "border-clt bg-clt-soft text-clt-ink", dot: "bg-clt" },
+    { id: "pj", label: "Proposta PJ", value: pjRate, icon: BriefcaseBusiness, on: "border-pj bg-pj-soft text-pj-ink", dot: "bg-pj" },
+  ];
+
+  return (
+    <div role="tablist" aria-label="Propostas" className="grid grid-cols-2 gap-2">
+      {items.map((item) => {
+        const isActive = active === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`painel-${item.id}`}
+            onClick={() => onSelect(item.id)}
+            className={`flex items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left transition duration-300 ${
+              isActive ? `${item.on} shadow-card` : "border-transparent bg-white text-ink/60 hover:border-line"
+            }`}
+          >
+            <span
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${isActive ? "bg-white/70" : "bg-paper"}`}
+            >
+              <item.icon size={17} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{item.label}</span>
+              <span className="num flex items-center gap-1.5 text-xs opacity-80">
+                <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} aria-hidden />
+                {BRL0.format(item.value)}
+                {item.id === "pj" ? " /mês" : " bruto"}
+              </span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -304,14 +451,11 @@ function CLTFields({ prefill }: { prefill: Prefill }) {
 
 function PJFields({ prefill }: { prefill: Prefill }) {
   const [regime, setRegime] = useState("auto");
-  // Pro-labore e faturamento acompanham a nota recebida da landing (28% para o Fator R, nota x 12).
-  const rate = prefill.pjRate ?? 15000;
-  const proLabore = Math.round(rate * PRO_LABORE_RATE);
 
   return (
     <FormSection side="pj" title="Proposta PJ" icon={BriefcaseBusiness}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <MoneyField name="pjMonthlyRate" label="Valor mensal da nota" defaultValue={String(rate)} />
+        <MoneyField name="pjMonthlyRate" label="Valor mensal da nota" defaultValue={String(prefill.pjRate ?? 15000)} />
         <NumberField
           name="pjPaidMonthsPerYear"
           label="Meses faturados no ano"
@@ -323,29 +467,6 @@ function PJFields({ prefill }: { prefill: Prefill }) {
         <MoneyField name="pjMonthlyAccountingCost" label="Contador por mês" defaultValue="250" />
         <MoneyField name="pjMonthlyHealthPlanCost" label="Plano de saúde por mês" defaultValue="700" />
       </div>
-
-      <fieldset className="mt-5">
-        <legend className="mb-2 text-sm font-medium text-ink/80">Como é o contrato</legend>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Select
-            name="pjContractRisk"
-            label="Estabilidade da relação"
-            hint="Alta: contrato longo e cliente sólido. Baixa: projeto curto."
-            defaultValue="medium"
-            options={[
-              ["low", "Alta"],
-              ["medium", "Média"],
-              ["high", "Baixa"],
-            ]}
-          />
-          <NumberField name="pjNoticeDays" label="Aviso prévio para encerrar" defaultValue="30" step="1" suffix="dias" />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Toggle name="pjHasPaidVacation" label="Tem pausa remunerada" />
-          <Toggle name="pjAllowsOtherClients" label="Posso ter outros clientes" />
-          <Toggle name="pjRequiresExclusivity" label="Exige exclusividade" defaultChecked={false} />
-        </div>
-      </fieldset>
 
       <Advanced title="Impostos, pró-labore e reservas">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -363,15 +484,29 @@ function PJFields({ prefill }: { prefill: Prefill }) {
           ) : (
             <input type="hidden" name="pjEffectiveTaxRate" value="6" />
           )}
-          <MoneyField name="pjProLabore" label="Pró-labore mensal" hint="Deixe 28% do faturamento para o Fator R." defaultValue={String(proLabore)} />
-          <NumberField name="pjProLaboreRate" label="Pró-labore automático" defaultValue="28" suffix="%" />
+          {/* Vazios = automaticos: o motor usa o % abaixo sobre a nota, nota x 12 e pro-labore x 12. */}
+          <MoneyField
+            name="pjProLabore"
+            label="Pró-labore mensal"
+            hint="Vazio: calculado pelo percentual ao lado."
+            defaultValue=""
+            placeholder="Automático"
+          />
+          <NumberField name="pjProLaboreRate" label="Pró-labore automático" hint="28% fecha o Fator R." defaultValue="28" suffix="%" />
           <MoneyField
             name="pjGrossRevenueLast12Months"
             label="Faturamento dos últimos 12 meses"
-            hint="Empresa nova: valor mensal x 12."
-            defaultValue={String(rate * 12)}
+            hint="Vazio: valor da nota x 12 (empresa nova)."
+            defaultValue=""
+            placeholder="Automático"
           />
-          <MoneyField name="pjPayrollLast12Months" label="Pró-labore dos últimos 12 meses" defaultValue={String(proLabore * 12)} />
+          <MoneyField
+            name="pjPayrollLast12Months"
+            label="Pró-labore dos últimos 12 meses"
+            hint="Vazio: pró-labore x 12."
+            defaultValue=""
+            placeholder="Automático"
+          />
           <MoneyField name="pjOtherMonthlyCosts" label="Outros custos mensais" defaultValue="0" />
         </div>
 
@@ -384,6 +519,33 @@ function PJFields({ prefill }: { prefill: Prefill }) {
           <NumberField name="pjEmergencyReserveRate" label="Emergência" defaultValue="10" suffix="%" />
         </div>
       </Advanced>
+    </FormSection>
+  );
+}
+
+function ContractFields() {
+  return (
+    <FormSection side="pj" title="Contrato PJ" icon={ShieldCheck}>
+      <p className="hint -mt-2 mb-4">Define a margem de risco sobre o valor de empate.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          name="pjContractRisk"
+          label="Estabilidade da relação"
+          hint="Alta: contrato longo e cliente sólido. Baixa: projeto curto."
+          defaultValue="medium"
+          options={[
+            ["low", "Alta"],
+            ["medium", "Média"],
+            ["high", "Baixa"],
+          ]}
+        />
+        <NumberField name="pjNoticeDays" label="Aviso prévio para encerrar" defaultValue="30" step="1" suffix="dias" />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Toggle name="pjHasPaidVacation" label="Tem pausa remunerada" />
+        <Toggle name="pjAllowsOtherClients" label="Posso ter outros clientes" />
+        <Toggle name="pjRequiresExclusivity" label="Exige exclusividade" defaultChecked={false} />
+      </div>
     </FormSection>
   );
 }
@@ -404,9 +566,9 @@ function FormSection({
 
   return (
     <section className="card relative overflow-hidden p-5 sm:p-6">
-      <span className={`absolute inset-y-0 left-0 w-1 ${bar}`} aria-hidden />
+      <span className={`absolute inset-x-0 top-0 h-1 ${bar}`} aria-hidden />
       <div className="mb-5 flex items-center gap-3">
-        <span className={`grid h-9 w-9 place-items-center rounded-lg ${accent}`}>
+        <span className={`grid h-10 w-10 place-items-center rounded-2xl ${accent}`}>
           <Icon size={18} />
         </span>
         <h2 className="text-lg font-bold">{title}</h2>
@@ -418,7 +580,7 @@ function FormSection({
 
 function Advanced({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <details className="group mt-5 rounded-xl border border-line bg-paper/60">
+    <details className="group mt-5 rounded-2xl border border-line bg-paper/60">
       <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink/75 hover:text-ink">
         {title}
         <ChevronDown size={18} className="transition group-open:rotate-180" />
@@ -470,16 +632,24 @@ function MoneyField({
   label,
   defaultValue,
   hint,
+  placeholder,
 }: {
   name: string;
   label: string;
   defaultValue: string;
   hint?: string;
+  placeholder?: string;
 }) {
-  const [value, setValue] = useState(formatCurrencyInput(Number(defaultValue)));
+  // Com placeholder o campo pode ficar vazio (vazio = automatico, enviado como 0).
+  const allowEmpty = placeholder !== undefined;
+  const [value, setValue] = useState(defaultValue === "" && allowEmpty ? "" : formatCurrencyInput(Number(defaultValue)));
 
   function handleChange(nextValue: string) {
     const digits = nextValue.replace(/\D/g, "");
+    if (allowEmpty && (digits === "" || Number(digits) === 0)) {
+      setValue("");
+      return;
+    }
     const amount = nextValue.includes("R$") || nextValue.includes(",") ? Number(digits) / 100 : Number(digits || 0);
     setValue(formatCurrencyInput(amount));
   }
@@ -493,6 +663,7 @@ function MoneyField({
         type="text"
         inputMode="numeric"
         className="num"
+        placeholder={placeholder}
         value={value}
         onChange={(event) => handleChange(event.target.value)}
       />
@@ -552,7 +723,7 @@ function ResultPanel({
 }) {
   if (error) {
     return (
-      <div className="card border-clay/30 p-6">
+      <div className="card animate-shake border-clay/30 p-6">
         <h2 className="text-lg font-bold text-clay">Não foi possível calcular</h2>
         <p className="mt-2 text-sm text-ink/70">{error} Confira se a API está no ar e tente de novo.</p>
       </div>
@@ -573,7 +744,7 @@ function ResultPanel({
 function EmptyResult({ mode }: { mode: CalculatorMode }) {
   return (
     <div className="card p-6">
-      <span className="grid h-11 w-11 place-items-center rounded-xl bg-mint-soft text-mint">
+      <span className="grid h-12 w-12 animate-float-slow place-items-center rounded-2xl bg-forest text-lime">
         <Scale size={22} />
       </span>
       <h2 className="mt-4 text-lg font-bold">Seu resultado aparece aqui</h2>
@@ -619,10 +790,12 @@ function CompareResultPanel({ result }: { result: CompareResult }) {
   const gain = result.annualDifference;
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card animate-fade-up overflow-hidden">
       <div className={`border-b p-6 ${verdict.tone}`}>
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">Veredito</p>
-        <h2 className={`mt-1 text-2xl font-bold ${verdict.title}`}>{verdict.label}</h2>
+        <h2 className={`mt-1 animate-pop-in text-2xl font-bold ${verdict.title}`} style={{ animationDelay: "150ms" }}>
+          {verdict.label}
+        </h2>
         <p className="mt-2 text-sm leading-6 text-ink/70">{result.summary}</p>
       </div>
 
@@ -635,11 +808,11 @@ function CompareResultPanel({ result }: { result: CompareResult }) {
             value={`${gain >= 0 ? "+" : "−"}${BRL0.format(Math.abs(gain))}`}
             detail={gain >= 0 ? "a favor do PJ" : "a favor da CLT"}
           />
-          <Stat label="Líquido no mês" value={BRL0.format(result.pj.monthlyNet)} detail={`PJ · CLT ${BRL0.format(result.clt.monthlyNet)}`} />
-          <Stat label="PJ para empatar" value={BRL0.format(result.minimumPjToBreakEven)} detail="por mês" />
+          <Stat label="Líquido no mês" value={<Money value={result.pj.monthlyNet} />} detail={`PJ · CLT ${BRL0.format(result.clt.monthlyNet)}`} />
+          <Stat label="PJ para empatar" value={<Money value={result.minimumPjToBreakEven} />} detail="por mês" />
           <Stat
             label="PJ recomendado"
-            value={BRL0.format(result.minimumPjRecommended)}
+            value={<Money value={result.minimumPjRecommended} />}
             detail={`com ${PERCENT.format(result.pj.riskPremiumRate)} de margem`}
             highlight
           />
@@ -684,13 +857,13 @@ function EquivalentResultPanel({ mode, result }: { mode: Exclude<CalculatorMode,
   const clt = isCLTToPJ ? result.reference : result.equivalent;
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card animate-fade-up overflow-hidden">
       <div className={`border-b p-6 ${isCLTToPJ ? verdicts.pj.tone : verdicts.clt.tone}`}>
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">
           {isCLTToPJ ? "Peça como PJ pelo menos" : "Salário CLT equivalente"}
         </p>
         <p className={`num mt-1 text-4xl font-bold ${isCLTToPJ ? verdicts.pj.title : verdicts.clt.title}`}>
-          {BRL0.format(isCLTToPJ ? result.minimumPjRecommended : result.equivalentValue)}
+          <Money value={isCLTToPJ ? result.minimumPjRecommended : result.equivalentValue} />
           <span className="text-base font-semibold text-ink/45"> /mês</span>
         </p>
         <p className="mt-2 text-sm leading-6 text-ink/70">{result.summary}</p>
@@ -702,15 +875,15 @@ function EquivalentResultPanel({ mode, result }: { mode: Exclude<CalculatorMode,
         <div className="mt-6 grid grid-cols-2 gap-3">
           {isCLTToPJ ? (
             <>
-              <Stat label="Empate exato" value={BRL0.format(result.minimumPjToBreakEven)} detail="por mês, sem margem" />
+              <Stat label="Empate exato" value={<Money value={result.minimumPjToBreakEven} />} detail="por mês, sem margem" />
               <Stat label="Margem de risco" value={PERCENT.format(result.riskPremiumRate)} detail="sobre o empate" />
-              <Stat label="Líquido PJ no mês" value={BRL0.format(result.equivalent.monthlyNet)} detail="no valor recomendado" />
-              <Stat label="Líquido CLT no mês" value={BRL0.format(result.reference.monthlyNet)} detail="proposta atual" />
+              <Stat label="Líquido PJ no mês" value={<Money value={result.equivalent.monthlyNet} />} detail="no valor recomendado" />
+              <Stat label="Líquido CLT no mês" value={<Money value={result.reference.monthlyNet} />} detail="proposta atual" />
             </>
           ) : (
             <>
-              <Stat label="Líquido CLT no mês" value={BRL0.format(result.equivalent.monthlyNet)} detail="no salário equivalente" />
-              <Stat label="Líquido PJ no mês" value={BRL0.format(result.reference.monthlyNet)} detail="proposta atual" />
+              <Stat label="Líquido CLT no mês" value={<Money value={result.equivalent.monthlyNet} />} detail="no salário equivalente" />
+              <Stat label="Líquido PJ no mês" value={<Money value={result.reference.monthlyNet} />} detail="proposta atual" />
             </>
           )}
         </div>
@@ -752,16 +925,18 @@ function AnnualBars({ clt, pj }: { clt: number; pj: number }) {
     <div>
       <p className="mb-3 text-sm font-semibold text-ink/70">Pacote anual disponível</p>
       <div className="grid gap-3">
-        {rows.map((row) => (
+        {rows.map((row, index) => (
           <div key={row.label}>
             <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
               <span className={`font-semibold ${row.text}`}>{row.label}</span>
-              <span className="num font-bold">{BRL0.format(row.value)}</span>
+              <span className="num font-bold">
+                <Money value={row.value} />
+              </span>
             </div>
-            <div className="h-2.5 rounded-full bg-paper">
+            <div className="h-3 overflow-hidden rounded-full bg-paper">
               <div
-                className={`h-2.5 rounded-full ${row.bar} transition-all duration-500`}
-                style={{ width: `${Math.max(4, (row.value / max) * 100)}%` }}
+                className={`h-full origin-left animate-grow-x rounded-full ${row.bar}`}
+                style={{ width: `${Math.max(4, (row.value / max) * 100)}%`, animationDelay: `${index * 150}ms` }}
               />
             </div>
           </div>
@@ -771,20 +946,24 @@ function AnnualBars({ clt, pj }: { clt: number; pj: number }) {
   );
 }
 
-function Stat({ label, value, detail, highlight = false }: { label: string; value: string; detail?: string; highlight?: boolean }) {
+function Stat({ label, value, detail, highlight = false }: { label: string; value: ReactNode; detail?: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-xl border p-3.5 ${highlight ? "border-mint/30 bg-mint-soft" : "border-line bg-white"}`}>
-      <p className="text-xs font-medium text-ink/55">{label}</p>
-      <p className={`num mt-1 text-lg font-bold ${highlight ? "text-mint-dark" : "text-ink"}`}>{value}</p>
-      {detail ? <p className="text-xs text-ink/45">{detail}</p> : null}
+    <div className={`rounded-2xl p-3.5 transition ${highlight ? "bg-forest text-white shadow-float" : "bg-paper"}`}>
+      <p className={`text-xs font-medium ${highlight ? "text-white/65" : "text-ink/55"}`}>{label}</p>
+      <p className={`num mt-1 text-lg font-bold ${highlight ? "text-lime" : "text-ink"}`}>{value}</p>
+      {detail ? <p className={`text-xs ${highlight ? "text-white/55" : "text-ink/45"}`}>{detail}</p> : null}
     </div>
   );
 }
 
+function Money({ value }: { value: number }) {
+  return <>{BRL0.format(useCountUp(value))}</>;
+}
+
 function SetAside({ value }: { value: number }) {
   return (
-    <p className="mt-4 flex gap-2 rounded-xl bg-paper p-3.5 text-sm text-ink/65">
-      <Info size={17} className="mt-0.5 shrink-0 text-ink/40" />
+    <p className="mt-4 flex gap-2 rounded-2xl border border-pj/20 bg-pj-soft/60 p-3.5 text-sm text-ink/70">
+      <Info size={17} className="mt-0.5 shrink-0 text-pj" />
       <span>
         Como PJ, separe cerca de <strong className="num text-ink">{BRL0.format(value)}</strong> por mês para férias, 13º e
         emergência. Esse dinheiro continua seu.
