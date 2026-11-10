@@ -48,16 +48,9 @@ export function defaultPJAssumptions(overrides: Partial<PJPayload> = {}): PJPayl
 }
 
 // Mesmas premissas que o formulario da calculadora traz preenchidas: pausa remunerada ligada e
-// pro-labore/faturamento/folha fixados a partir da nota. Precisa ser igual ao que o formulario envia,
-// senao o "PJ para empatar" da landing diverge do da calculadora (o motor recalcula pro-labore
-// quando ele vem zerado, mas mantem o valor quando vem preenchido).
+// pro-labore/faturamento/folha automaticos (zero). Com zero o motor usa 28% da nota, nota x 12 e
+// pro-labore x 12, inclusive ao procurar o valor de empate. Precisa ser igual ao formulario, senao o
+// "PJ para empatar" da landing diverge do da calculadora.
 export function quickPJ(monthlyRate: number): PJPayload {
-  const proLabore = Math.round(monthlyRate * PRO_LABORE_RATE);
-  return defaultPJAssumptions({
-    monthlyRate,
-    hasPaidVacation: true,
-    proLabore,
-    grossRevenueLast12Months: monthlyRate * 12,
-    payrollLast12Months: proLabore * 12,
-  });
+  return defaultPJAssumptions({ monthlyRate, hasPaidVacation: true });
 }
