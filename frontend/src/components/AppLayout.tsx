@@ -1,6 +1,6 @@
-import { Calculator, History, LogOut, Menu, Plus, Sparkles, X, type LucideIcon } from "lucide-react";
+import { Calculator, History, LogOut, Menu, Sparkles, X, type LucideIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { useAuth } from "../lib/demoAuth";
 import { Logo } from "./Logo";
@@ -12,7 +12,7 @@ type NavEntry = { to: string; label: string; icon: LucideIcon; soon?: boolean };
 
 const groups: Array<{ title: string; items: NavEntry[] }> = [
   { title: "Simular", items: [{ to: "/calculadora", label: "Calculadora", icon: Calculator }] },
-  { title: "Sua conta", items: [{ to: "/historico", label: "Histórico", icon: History }] },
+  { title: "Histórico", items: [{ to: "/historico", label: "Simulações", icon: History }] },
   { title: "Em breve", items: [{ to: "/conversas", label: "Análise com IA", icon: Sparkles, soon: true }] },
 ];
 
@@ -102,11 +102,6 @@ function SidebarPanel({ onClose }: { onClose?: () => void }) {
           </button>
         ) : null}
       </div>
-
-      <Link to="/calculadora" className="btn-primary mt-6 w-full">
-        <Plus size={17} />
-        Nova simulação
-      </Link>
 
       <div className="mt-6 grid gap-5">
         {groups.map((group) => (
