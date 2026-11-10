@@ -50,6 +50,12 @@ Sem biblioteca: `src/lib/motion.tsx` + keyframes do `tailwind.config.ts`.
 
 A landing usa arte propria: paisagem de colinas em SVG (`HillsArt`) e mockups do produto em HTML (navegador e celular) com numeros reais do motor. Foto externa so com licenca de uso comercial, registrada em `frontend/public/images/CREDITOS.md`. Nao copiar imagens das referencias.
 
+## Estrutura das telas
+
+- Visitante (e paginas publicas, inclusive a landing logado): header no topo, conteudo em `max-w-6xl` e rodape.
+- Logado em `/calculadora`, `/historico`, `/conversas` e `/admin` (`APP_ROUTES`): `AppLayout` (`src/components/AppLayout.tsx`) com sidebar branca arredondada (logo, "Nova simulacao", grupos Simular / Sua conta / Em breve, cartao do usuario com Sair). Abaixo de `lg` vira barra superior com menu que abre a sidebar como gaveta (`animate-drawer-in`, fecha com Esc, clique fora ou troca de rota).
+- Rota nova do produto entra em `APP_ROUTES` e num grupo da sidebar.
+
 ## Formularios
 
 - Mostrar primeiro so o essencial (salario, beneficios, valor da nota, custos obvios). Campos tecnicos (regime, Fator R, faturamento 12m, reservas) ficam em `<details>` "avancado". Inputs dentro de `<details>` fechado continuam sendo enviados no `FormData`.
@@ -57,12 +63,16 @@ A landing usa arte propria: paisagem de colinas em SVG (`HillsArt`) e mockups do
 - Todo campo com jargao ganha `hint` em linguagem simples. Sufixos (`%`, `dias`, `meses`) dentro do input.
 - Booleanos como `Toggle` (pilula), nao checkbox cru.
 - Nomes dos campos (`name=`) sao contrato com `readCLT`/`readPJ`; renomear so junto.
+- Abaixo de `lg` a calculadora vira etapas (Proposta CLT -> Proposta PJ -> Contrato PJ, conforme o modo) com `StepProgress`; as secoes das outras etapas ficam com `max-lg:hidden` e continuam no `FormData`. Enter ou "Continuar" so avanca; o botao de calcular sempre calcula.
+- Pro-labore, faturamento 12m e folha 12m comecam vazios ("Automatico") e vao como 0: o motor usa 28% da nota, nota x 12 e pro-labore x 12, inclusive na busca do valor de empate. Nao voltar a preencher valores fixos, senao quem troca so a nota fica com Fator R e faixa do Simples errados.
 
 ## Autenticacao
 
 Login, cadastro e confirmacao usam `AuthLayout` (`src/components/AuthCard.tsx`): formulario a esquerda e painel `forest` com `HillsArt` e card de exemplo (`EXAMPLE` de `src/lib/example.ts`) a direita; no celular o painel vira um cabecalho compacto. Campos com `Field`/`PasswordField` (erro inline com `aria-invalid`, mostrar/ocultar senha), validacao no cliente com `noValidate`, erro do servidor em `FormMessage` (treme a cada tentativa) e sucesso em `SuccessState`.
 
 ## Resultado
+
+O painel remonta a cada calculo (`key`) para animar: cartao com `animate-fade-up`, veredito com `animate-pop-in`, barras com `animate-grow-x` e numeros-chave com `<Money>` (count-up). Valor recomendado em `Stat highlight` (fundo `forest`, numero `lime`).
 
 Ordem fixa: veredito colorido pelo lado vencedor -> barras do pacote anual (CLT vs PJ) -> 4 numeros-chave (`Stat`) -> quanto separar por mes -> `<details>` "Como chegamos nesse numero" -> aviso legal. No celular, rolar ate o resultado depois do calculo.
 
