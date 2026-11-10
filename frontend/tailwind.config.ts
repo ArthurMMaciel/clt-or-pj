@@ -48,6 +48,11 @@ export default {
           "0%": { opacity: "0", transform: "scale(0.94)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%, 60%": { transform: "translateX(-6px)" },
+          "40%, 80%": { transform: "translateX(6px)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
@@ -56,6 +61,7 @@ export default {
         "float-slow": "float 8s ease-in-out infinite",
         "grow-x": "grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both",
         "pop-in": "pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both",
+        shake: "shake 0.4s ease-in-out",
       },
     },
   },
