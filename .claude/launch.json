@@ -13,6 +13,22 @@
       "runtimeExecutable": "npm.cmd",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5175", "--strictPort"],
       "port": 5175
+    },
+    {
+      "name": "api-review",
+      "runtimeExecutable": "C:\\Program Files\\Go\\bin\\go.exe",
+      "runtimeArgs": ["-C", "backend", "run", "./cmd/api"],
+      "env": { "PORT": "8091", "FRONTEND_URL": "http://localhost:5186" },
+      "port": 8091,
+      "autoPort": false
+    },
+    {
+      "name": "web-review",
+      "runtimeExecutable": "npm.cmd",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "5186", "--strictPort"],
+      "env": { "VITE_API_URL": "http://localhost:8091" },
+      "port": 5186,
+      "autoPort": false
     }
   ]
 }

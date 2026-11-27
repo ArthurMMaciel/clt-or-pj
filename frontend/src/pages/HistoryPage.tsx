@@ -1,11 +1,9 @@
-import { ArrowRight, BriefcaseBusiness, Building2, Calculator, Plus, RotateCcw, Scale } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { HillsArt } from "../components/HillsArt";
 import { fetchMyCalculations, getToken } from "../lib/api";
 import { useAuth } from "../lib/demoAuth";
-import { Reveal } from "../lib/motion";
 
 type Calculation = {
   id: string;
@@ -75,22 +73,30 @@ export function HistoryPage() {
 
   return (
     <section>
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Sua conta</p>
-          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Histórico de simulações</h1>
+          <h1 className="mt-2 text-[1.9rem] leading-tight sm:text-[2.4rem]">Histórico de simulações</h1>
+          {rows.length > 0 ? (
+            <p className="num mt-1.5 text-sm text-muted">
+              {rows.length} {rows.length === 1 ? "simulação" : "simulações"} · PJ rendeu mais em {pjWins} · CLT rendeu mais em{" "}
+              {cltWins}
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
-          {user?.kind === "demo" ? <span className="badge bg-lime-soft text-forest">Dados demonstrativos</span> : null}
+          {user?.kind === "demo" ? <span className="badge bg-paper text-muted">Dados demonstrativos</span> : null}
           <Link to="/calculadora" className="btn-primary">
-            <Plus size={17} />
+            <Plus size={17} aria-hidden />
             Nova simulação
           </Link>
         </div>
       </div>
 
       {error ? (
-        <p className="mb-4 animate-shake rounded-2xl border border-clay/25 bg-clay/5 p-4 text-sm text-clay">{error}</p>
+        <p className="mb-4 rounded-lg border border-clay/30 bg-clay/5 p-4 text-sm text-clay" role="alert">
+          {error}
+        </p>
       ) : null}
 
       {loading ? <HistorySkeleton /> : null}
@@ -99,16 +105,56 @@ export function HistoryPage() {
 
       {rows.length > 0 ? (
         <>
-          <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
-            <Summary label="Simulações" value={String(rows.length)} icon={Calculator} tone="bg-forest text-lime" />
-            <Summary label="PJ rendeu mais" value={String(pjWins)} icon={BriefcaseBusiness} tone="bg-pj-soft text-pj" />
-            <Summary label="CLT rendeu mais" value={String(cltWins)} icon={Building2} tone="bg-clt-soft text-clt" />
+          {/* Desktop: tabela, para comparar varias simulacoes de relance. */}
+          <div className="card hidden overflow-hidden md:block">
+            <table className="w-full text-left text-sm">
+              <caption className="sr-only">Simulações salvas, da mais recente para a mais antiga</caption>
+              <thead className="border-b border-line bg-paper/60 text-xs uppercase tracking-[0.1em] text-subtle">
+                <tr>
+                  <th scope="col" className="px-5 py-3 font-semibold">Data</th>
+                  <th scope="col" className="px-5 py-3 font-semibold">Tipo</th>
+                  <th scope="col" className="px-5 py-3 text-right font-semibold">Salário CLT</th>
+                  <th scope="col" className="px-5 py-3 text-right font-semibold">Nota PJ</th>
+                  <th scope="col" className="px-5 py-3 font-semibold">Resultado</th>
+                  <th scope="col" className="px-5 py-3">
+                    <span className="sr-only">Ações</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {rows.map((row) => {
+                  const view = describe(row);
+                  return (
+                    <tr key={row.id} className="hover:bg-paper/50">
+                      <td className="num whitespace-nowrap px-5 py-3 text-muted">{formatDate(row.created_at)}</td>
+                      <td className="px-5 py-3 font-medium">{formatType(row.type)}</td>
+                      <td className="num px-5 py-3 text-right">{view.showCLT ? BRL0.format(view.salary) : <Dash />}</td>
+                      <td className="num px-5 py-3 text-right">{view.showPJ ? BRL0.format(view.pjRate) : <Dash />}</td>
+                      <td className="px-5 py-3">
+                        <RecommendationBadge recommendation={row.recommendation} />
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <Link
+                          to={view.href}
+                          className="inline-flex min-h-[2.25rem] items-center gap-1.5 whitespace-nowrap rounded-md px-2 font-semibold text-mint hover:bg-mint-soft hover:text-mint-dark"
+                        >
+                          Reabrir
+                          <ArrowRight size={15} aria-hidden />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {rows.map((row, index) => (
-              <Reveal as="li" key={row.id} delay={index * 70}>
-                <HistoryCard row={row} />
-              </Reveal>
+
+          {/* Celular: lista com os mesmos dados. */}
+          <ul className="grid gap-2 md:hidden">
+            {rows.map((row) => (
+              <li key={row.id}>
+                <HistoryItem row={row} />
+              </li>
             ))}
           </ul>
         </>
@@ -117,21 +163,9 @@ export function HistoryPage() {
   );
 }
 
-function Summary({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof Calculator; tone: string }) {
-  return (
-    <div className="card flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
-      <span className={`grid h-9 w-9 place-items-center rounded-2xl sm:h-11 sm:w-11 ${tone}`}>
-        <Icon size={19} />
-      </span>
-      <span>
-        <span className="num block font-display text-2xl font-bold leading-none">{value}</span>
-        <span className="mt-1 block text-xs text-ink/55">{label}</span>
-      </span>
-    </div>
-  );
-}
+type RowView = { salary: number; pjRate: number; showCLT: boolean; showPJ: boolean; href: string };
 
-function HistoryCard({ row }: { row: Calculation }) {
+function describe(row: Calculation): RowView {
   const salary = row.input_json.clt?.grossSalary ?? 0;
   const benefits = row.input_json.clt?.monthlyBenefits ?? 0;
   // No modo "quanto pedir como PJ" o lado PJ e premissa (valor 1), entao nao exibimos.
@@ -146,64 +180,48 @@ function HistoryCard({ row }: { row: Calculation }) {
   }
   if (showPJ) params.set("nota", String(pjRate));
 
+  return { salary, pjRate, showCLT, showPJ, href: `/calculadora?${params.toString()}` };
+}
+
+function HistoryItem({ row }: { row: Calculation }) {
+  const view = describe(row);
+
   return (
-    <article className="card group flex h-full flex-col p-5 transition duration-300 hover:-translate-y-1 hover:shadow-lift">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-paper text-ink/60">
-            <Scale size={18} />
-          </span>
-          <span className="leading-tight">
-            <span className="block font-semibold">{formatType(row.type)}</span>
-            <span className="block text-xs text-ink/50">{new Date(row.created_at).toLocaleDateString("pt-BR")}</span>
-          </span>
+    <Link to={view.href} className="card flex items-center gap-3 p-4 transition-colors duration-fast hover:border-ink/25">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-semibold">{formatType(row.type)}</span>
+          <RecommendationBadge recommendation={row.recommendation} />
         </div>
-        <RecommendationBadge recommendation={row.recommendation} />
+        <p className="num mt-1 text-sm text-muted">
+          {formatDate(row.created_at)}
+          {view.showCLT ? ` · CLT ${BRL0.format(view.salary)}` : ""}
+          {view.showPJ ? ` · PJ ${BRL0.format(view.pjRate)}` : ""}
+        </p>
       </div>
-
-      <dl className="mt-5 grid flex-1 content-start gap-2 text-sm">
-        {showCLT ? <Value side="clt" label="Salário CLT" value={salary} /> : null}
-        {showPJ ? <Value side="pj" label="Nota PJ" value={pjRate} /> : null}
-      </dl>
-
-      <Link
-        to={`/calculadora?${params.toString()}`}
-        className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-mint hover:text-mint-dark"
-      >
-        <RotateCcw size={15} />
-        Abrir de novo na calculadora
-        <ArrowRight size={15} className="transition group-hover:translate-x-1" />
-      </Link>
-    </article>
+      <ArrowRight size={18} className="shrink-0 text-subtle" aria-label="Reabrir na calculadora" />
+    </Link>
   );
 }
 
-function Value({ side, label, value }: { side: "clt" | "pj"; label: string; value: number }) {
+function Dash() {
   return (
-    <div className="flex items-center justify-between rounded-xl bg-paper px-3 py-2">
-      <dt className="flex items-center gap-2 text-ink/60">
-        <span className={`h-2 w-2 rounded-full ${side === "clt" ? "bg-clt" : "bg-pj"}`} aria-hidden />
-        {label}
-      </dt>
-      <dd className="num font-semibold">{BRL0.format(value)}</dd>
-    </div>
+    <span className="text-subtle" aria-label="não se aplica">
+      —
+    </span>
   );
 }
 
 function EmptyHistory() {
   return (
-    <div className="card relative isolate overflow-hidden px-6 pb-40 pt-12 text-center sm:pb-44">
-      <HillsArt className="absolute inset-x-0 bottom-0 -z-10 h-40 w-full opacity-90 sm:h-44" />
-      <span className="mx-auto grid h-14 w-14 animate-float place-items-center rounded-2xl bg-forest text-lime shadow-float">
-        <Calculator size={24} />
-      </span>
-      <h2 className="mt-5 text-2xl font-bold">Nenhuma simulação salva ainda</h2>
-      <p className="mx-auto mt-2 max-w-md text-ink/60">
+    <div className="card border-dashed bg-transparent px-6 py-12 text-center">
+      <h2 className="text-2xl">Nenhuma simulação salva ainda</h2>
+      <p className="mx-auto mt-2 max-w-md text-muted">
         Simule com a conta aberta e cada resultado aparece aqui, pronto para reabrir quando a negociação andar.
       </p>
       <Link to="/calculadora" className="btn-primary btn-lg mt-6">
         Fazer a primeira simulação
-        <ArrowRight size={18} />
+        <ArrowRight size={18} aria-hidden />
       </Link>
     </div>
   );
@@ -211,23 +229,27 @@ function EmptyHistory() {
 
 function HistorySkeleton() {
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Carregando histórico">
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="card h-48 animate-pulse p-5">
-          <div className="h-10 w-1/2 rounded-2xl bg-paper" />
-          <div className="mt-6 h-9 rounded-xl bg-paper" />
-          <div className="mt-2 h-9 rounded-xl bg-paper" />
+    <div className="card overflow-hidden" role="status" aria-label="Carregando histórico">
+      {[0, 1, 2, 3].map((item) => (
+        <div key={item} className="flex animate-pulse items-center gap-4 border-b border-line px-5 py-4 last:border-b-0">
+          <div className="h-3 w-20 rounded bg-paper" />
+          <div className="h-3 w-32 rounded bg-paper" />
+          <div className="ml-auto h-3 w-24 rounded bg-paper" />
         </div>
       ))}
     </div>
   );
 }
 
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("pt-BR");
+}
+
 function RecommendationBadge({ recommendation }: { recommendation: string }) {
   const styles: Record<string, string> = {
     clt: "bg-clt-soft text-clt-ink",
     pj: "bg-pj-soft text-pj-ink",
-    neutral: "bg-paper text-ink/60",
+    neutral: "bg-paper text-muted",
   };
   return <span className={`badge ${styles[recommendation] ?? styles.neutral}`}>{formatRecommendation(recommendation)}</span>;
 }

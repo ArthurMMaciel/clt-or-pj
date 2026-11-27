@@ -1,8 +1,7 @@
-import { AlertCircle, Check, CheckCircle2, Eye, EyeOff, History, Scale, ShieldCheck } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 import { EXAMPLE } from "../lib/example";
-import { HillsArt } from "./HillsArt";
 
 const BRL0 = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -23,7 +22,7 @@ const panels: Record<"login" | "register" | "confirm", PanelCopy> = {
   },
 };
 
-// Tela de autenticacao: formulario a esquerda e painel visual verde-floresta a direita (no celular vira um cabecalho).
+// Tela de autenticacao: formulario a esquerda e painel forest pautado a direita (no celular vira um cabecalho curto).
 export function AuthLayout({
   eyebrow,
   title,
@@ -40,19 +39,18 @@ export function AuthLayout({
   const copy = panels[panel];
 
   return (
-    <section className="card mx-auto grid w-full max-w-5xl overflow-hidden p-0 lg:min-h-[640px] lg:grid-cols-[1fr_1.05fr]">
-      <div className="relative isolate overflow-hidden bg-forest-deep px-6 py-7 text-white lg:hidden">
-        <HillsArt className="absolute inset-x-0 bottom-0 -z-10 h-full w-full opacity-80" />
+    <section className="card mx-auto grid w-full max-w-5xl overflow-hidden lg:min-h-[600px] lg:grid-cols-[1fr_1fr]">
+      <div className="ruled-dark px-6 py-6 text-white lg:hidden">
         <p className="text-sm font-semibold text-lime">{eyebrow}</p>
-        <p className="mt-1 max-w-xs font-display text-xl font-bold leading-tight">{copy.title}</p>
+        <p className="mt-1 max-w-xs font-display text-xl font-semibold leading-tight">{copy.title}</p>
       </div>
 
       <div className="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-12">
-        <div className="mx-auto w-full max-w-sm animate-fade-up">
-          <p className="eyebrow hidden lg:inline-flex">{eyebrow}</p>
-          <h1 className="text-3xl font-bold lg:mt-3 lg:text-4xl">{title}</h1>
-          <p className="mt-2 text-ink/60">{description}</p>
-          <div className="mt-8">{children}</div>
+        <div className="mx-auto w-full max-w-sm">
+          <p className="eyebrow hidden lg:block">{eyebrow}</p>
+          <h1 className="text-[1.9rem] leading-tight lg:mt-2 lg:text-[2.3rem]">{title}</h1>
+          <p className="mt-2 text-muted">{description}</p>
+          <div className="mt-7">{children}</div>
         </div>
       </div>
 
@@ -65,65 +63,47 @@ function AuthPanel({ copy }: { copy: PanelCopy }) {
   const max = Math.max(EXAMPLE.cltAnnual, EXAMPLE.pjAnnual);
 
   return (
-    <aside className="relative isolate hidden overflow-hidden bg-forest-deep p-10 text-white lg:flex lg:flex-col lg:justify-between">
-      <HillsArt className="absolute inset-x-0 bottom-0 -z-10 h-[60%] w-full" />
-      <div className="pointer-events-none absolute -right-20 -top-20 -z-10 h-72 w-72 rounded-full bg-lime/20 blur-3xl" aria-hidden />
-
-      <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-        <h2 className="max-w-sm text-3xl font-bold leading-tight">{copy.title}</h2>
-        <ul className="mt-6 grid gap-3 text-sm text-white/75">
+    <aside className="ruled-dark hidden p-10 text-white lg:flex lg:flex-col lg:justify-between">
+      <div>
+        <h2 className="max-w-sm text-[1.9rem] leading-tight">{copy.title}</h2>
+        <ul className="mt-6 grid gap-3 text-sm text-white/80">
           {copy.points.map((point) => (
             <li key={point} className="flex items-center gap-2.5">
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-lime text-forest-deep">
-                <Check size={13} />
-              </span>
+              <Check size={15} className="shrink-0 text-lime" aria-hidden />
               {point}
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="relative mt-10 animate-fade-up" style={{ animationDelay: "240ms" }}>
-        <div className="absolute -top-5 right-4 z-10 flex animate-float items-center gap-2 rounded-2xl bg-white px-3 py-2 text-ink shadow-float">
-          <span className="grid h-7 w-7 place-items-center rounded-xl bg-lime text-forest-deep">
-            <History size={15} />
-          </span>
-          <span className="text-xs font-semibold">Salvo no histórico</span>
+      {/* Exemplo com numeros reais do motor (EXAMPLE), so ilustrativo. */}
+      <div className="mt-10 rounded-xl bg-white p-5 text-ink" aria-hidden>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">CLT R$ 10 mil x PJ R$ 15 mil</span>
+          <span className="badge bg-pj-soft text-pj-ink">PJ compensa</span>
         </div>
-        <div className="rounded-3xl bg-white p-5 text-ink shadow-float" aria-hidden>
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-sm font-semibold">
-              <Scale size={16} className="text-mint" />
-              CLT R$ 10 mil x PJ R$ 15 mil
-            </span>
-            <span className="badge bg-pj-soft text-pj-ink">PJ compensa</span>
-          </div>
-          <div className="mt-4 grid gap-2.5">
-            <PanelBar label="CLT" value={EXAMPLE.cltAnnual} width={(EXAMPLE.cltAnnual / max) * 100} bar="bg-clt" />
-            <PanelBar label="PJ" value={EXAMPLE.pjAnnual} width={(EXAMPLE.pjAnnual / max) * 100} bar="bg-pj" delay={150} />
-          </div>
-          <div className="mt-4 flex items-center justify-between rounded-2xl bg-forest px-4 py-3 text-white">
-            <span className="text-xs text-white/70">Peça pelo menos</span>
-            <span className="num font-bold text-lime">{BRL0.format(EXAMPLE.recommended)}</span>
-          </div>
+        <div className="mt-4 grid gap-2.5">
+          <PanelBar label="CLT" value={EXAMPLE.cltAnnual} width={(EXAMPLE.cltAnnual / max) * 100} bar="bg-clt" />
+          <PanelBar label="PJ" value={EXAMPLE.pjAnnual} width={(EXAMPLE.pjAnnual / max) * 100} bar="bg-pj" />
+        </div>
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-forest px-4 py-3 text-white">
+          <span className="text-xs text-white/75">Peça pelo menos</span>
+          <span className="num font-display text-lg font-semibold text-lime">{BRL0.format(EXAMPLE.recommended)}</span>
         </div>
       </div>
     </aside>
   );
 }
 
-function PanelBar({ label, value, width, bar, delay = 0 }: { label: string; value: number; width: number; bar: string; delay?: number }) {
+function PanelBar({ label, value, width, bar }: { label: string; value: number; width: number; bar: string }) {
   return (
     <div>
       <div className="mb-1 flex justify-between text-xs font-semibold">
         <span>{label}</span>
         <span className="num">{BRL0.format(value)}</span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-paper">
-        <div
-          className={`h-full origin-left animate-grow-x rounded-full ${bar}`}
-          style={{ width: `${width}%`, animationDelay: `${400 + delay}ms` }}
-        />
+      <div className="h-2 overflow-hidden rounded-sm bg-paper">
+        <div className={`h-full rounded-sm ${bar}`} style={{ width: `${width}%` }} />
       </div>
     </div>
   );
@@ -158,7 +138,7 @@ export function Field({ name, label, hint, error, trailing, className = "", ...i
       </div>
       {error ? (
         <span id={`${id}-error`} className="flex animate-fade-in items-center gap-1.5 text-xs font-medium text-clay">
-          <AlertCircle size={14} />
+          <AlertCircle size={14} aria-hidden />
           {error}
         </span>
       ) : hint ? (
@@ -180,7 +160,7 @@ export function PasswordField(props: Omit<FieldProps, "type" | "trailing">) {
       trailing={
         <button
           type="button"
-          className="grid h-9 w-9 place-items-center rounded-full text-ink/45 transition hover:bg-paper hover:text-ink"
+          className="grid h-9 w-9 place-items-center rounded-md text-subtle transition-colors hover:bg-paper hover:text-ink"
           aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
           aria-pressed={visible}
           onClick={() => setVisible((value) => !value)}
@@ -195,12 +175,12 @@ export function PasswordField(props: Omit<FieldProps, "type" | "trailing">) {
 // `attempt` muda a cada envio com erro, para a mensagem tremer de novo mesmo com o mesmo texto.
 export function FormMessage({ tone, attempt = 0, children }: { tone: "error" | "success"; attempt?: number; children: ReactNode }) {
   const style =
-    tone === "error" ? "animate-shake border-clay/25 bg-clay/5 text-clay" : "animate-pop-in border-mint/25 bg-mint-soft text-mint-dark";
+    tone === "error" ? "animate-shake border-clay/30 bg-clay/5 text-clay" : "animate-fade-up border-mint/30 bg-mint-soft text-mint-dark";
   const Icon = tone === "error" ? AlertCircle : ShieldCheck;
 
   return (
-    <p key={attempt} role={tone === "error" ? "alert" : "status"} className={`flex items-start gap-2 rounded-2xl border px-3.5 py-3 text-sm ${style}`}>
-      <Icon size={17} className="mt-0.5 shrink-0" />
+    <p key={attempt} role={tone === "error" ? "alert" : "status"} className={`flex items-start gap-2 rounded-lg border px-3.5 py-3 text-sm ${style}`}>
+      <Icon size={17} className="mt-0.5 shrink-0" aria-hidden />
       {children}
     </p>
   );
@@ -208,12 +188,12 @@ export function FormMessage({ tone, attempt = 0, children }: { tone: "error" | "
 
 export function SuccessState({ title, children, action }: { title: string; children: ReactNode; action: ReactNode }) {
   return (
-    <div className="animate-pop-in text-center" role="status">
-      <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-mint-soft text-mint ring-8 ring-mint-soft/50">
-        <CheckCircle2 size={32} />
+    <div className="animate-fade-up text-center" role="status">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-mint-soft text-mint">
+        <CheckCircle2 size={26} aria-hidden />
       </span>
-      <h2 className="mt-5 text-2xl font-bold">{title}</h2>
-      <div className="mt-2 text-ink/65">{children}</div>
+      <h2 className="mt-4 text-2xl">{title}</h2>
+      <div className="mt-2 text-muted">{children}</div>
       <div className="mt-7">{action}</div>
     </div>
   );

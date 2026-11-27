@@ -1,17 +1,4 @@
-import {
-  ArrowLeft,
-  ArrowLeftRight,
-  ArrowRight,
-  BriefcaseBusiness,
-  Building2,
-  ChevronDown,
-  Info,
-  Loader2,
-  Scale,
-  ShieldCheck,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Info, Loader2, PiggyBank, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -54,12 +41,27 @@ type ResultState =
 const modes: Array<{
   mode: CalculatorMode;
   label: string;
+  short: string;
   description: string;
-  icon: LucideIcon;
 }> = [
-  { mode: "compare", label: "Comparar propostas", description: "Tenho uma CLT e uma PJ", icon: Scale },
-  { mode: "clt_to_pj", label: "Quanto pedir como PJ", description: "Tenho só a proposta CLT", icon: ArrowLeftRight },
-  { mode: "pj_to_clt", label: "Quanto vale em CLT", description: "Tenho só a proposta PJ", icon: ArrowLeftRight },
+  {
+    mode: "compare",
+    label: "Comparar propostas",
+    short: "Comparar",
+    description: "Você tem uma proposta CLT e uma PJ e quer saber qual deixa mais dinheiro no ano.",
+  },
+  {
+    mode: "clt_to_pj",
+    label: "Quanto pedir como PJ",
+    short: "Pedir como PJ",
+    description: "Você tem só a proposta CLT e quer saber o valor mínimo da nota para a troca valer.",
+  },
+  {
+    mode: "pj_to_clt",
+    label: "Quanto vale em CLT",
+    short: "Valor em CLT",
+    description: "Você tem só a proposta PJ e quer saber qual salário CLT entrega o mesmo no ano.",
+  },
 ];
 
 type Prefill = { salary?: number; benefits?: number; pjRate?: number };
@@ -101,6 +103,8 @@ export function CalculatorPage() {
   const [resultVersion, setResultVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Resultado desatualizado: o usuario mexeu no formulario depois de calcular.
+  const [stale, setStale] = useState(false);
   const resultRef = useRef<HTMLElement>(null);
 
   const tabs = tabsFor(mode);
@@ -123,6 +127,7 @@ export function CalculatorPage() {
     setTab("clt");
     setResult(null);
     setError(null);
+    setStale(false);
   }
 
   function goToTab(next: TabId) {
@@ -135,6 +140,7 @@ export function CalculatorPage() {
   // Valores mostrados nas abas, lidos do proprio formulario a cada digitacao.
   function handleInput() {
     if (!formRef.current) return;
+    if (result) setStale(true);
     const form = new FormData(formRef.current);
     setSummary((current) => ({
       salary: form.has("cltGrossSalary") ? number(form, "cltGrossSalary") : current.salary,
@@ -183,8 +189,9 @@ export function CalculatorPage() {
         setResult({ mode, data });
       }
       setResultVersion((value) => value + 1);
+      setStale(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro inesperado.");
+      setError(friendlyError(err));
     } finally {
       setIsLoading(false);
       if (isNarrow()) {
@@ -194,62 +201,59 @@ export function CalculatorPage() {
   }
 
   // Com abas, so a aba ativa aparece. Inputs escondidos continuam no FormData.
-  const panelClass = (id: TabId) => (!hasTabs || tab === id ? "grid gap-5 animate-fade-up" : "hidden");
+  const panelClass = (id: TabId) => (!hasTabs || tab === id ? "grid gap-5" : "hidden");
 
   const submitButton = (className: string) => (
     <button type="submit" form={FORM_ID} className={`btn-primary btn-lg w-full ${className}`} disabled={isLoading}>
-      {isLoading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
-      {isLoading ? "Calculando..." : submitLabel(mode)}
+      {isLoading ? <Loader2 size={18} className="animate-spin" aria-hidden /> : null}
+      {isLoading ? "Calculando..." : submitLabel(mode, Boolean(result))}
     </button>
   );
 
+  const activeMode = modes.find((item) => item.mode === mode) ?? modes[0];
+
   return (
     <div>
-      <div className="mb-7 max-w-3xl">
-        <p className="eyebrow">Simulador CLT x PJ · regras 2026</p>
-        <h1 className="mt-2 text-3xl font-bold text-ink sm:text-4xl">Quanto sobra no ano em cada proposta?</h1>
-        <p className="mt-3 text-ink/65">
-          Impostos, 13º, férias, FGTS, PLR, Simples Nacional e margem de risco entram na conta. Os campos já vêm com um
-          exemplo preenchido: troque pelos números da sua proposta.
+      <div className="mb-6 max-w-2xl">
+        <p className="eyebrow">Simulador · regras de 2026</p>
+        <h1 className="mt-2 text-[1.9rem] leading-tight text-ink sm:text-[2.4rem]">Quanto sobra no ano em cada proposta?</h1>
+        <p className="mt-2 text-muted">
+          Impostos, 13º, férias, FGTS, Simples Nacional e margem de risco entram na conta. Os campos começam com um
+          exemplo: troque pelos números da sua proposta.
         </p>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Tipo de simulação"
-        className="mb-6 grid gap-1.5 rounded-3xl border border-line bg-white p-1.5 shadow-card sm:grid-cols-3"
-      >
-        {modes.map((item) => {
-          const active = mode === item.mode;
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.mode}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={`flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left transition duration-300 ${
-                active ? "bg-forest text-white shadow-float" : "hover:bg-paper"
-              }`}
-              onClick={() => selectMode(item.mode)}
-            >
-              <span
-                className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition ${
-                  active ? "bg-lime text-forest-deep" : "bg-paper text-ink/55"
+      {/* Seletor segmentado: tres modos lado a lado, ate no celular, com a descricao do modo ativo logo abaixo. */}
+      <div className="mb-6">
+        <div
+          role="group"
+          aria-label="O que você quer descobrir"
+          className="grid grid-cols-3 gap-1 rounded-lg border border-line bg-white p-1"
+        >
+          {modes.map((item) => {
+            const active = mode === item.mode;
+            return (
+              <button
+                key={item.mode}
+                type="button"
+                aria-pressed={active}
+                className={`min-h-[2.75rem] rounded-md px-2 py-2 text-[0.8125rem] font-semibold leading-tight transition duration-fast sm:text-sm ${
+                  active ? "bg-forest text-white" : "text-muted hover:bg-paper hover:text-ink"
                 }`}
+                onClick={() => selectMode(item.mode)}
               >
-                <Icon size={17} />
-              </span>
-              <span className="min-w-0">
-                <span className={`block text-sm font-semibold ${active ? "text-white" : "text-ink/80"}`}>{item.label}</span>
-                <span className={`block text-xs ${active ? "text-white/60" : "text-ink/50"}`}>{item.description}</span>
-              </span>
-            </button>
-          );
-        })}
+                <span className="sm:hidden">{item.short}</span>
+                <span className="hidden sm:inline">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-sm text-subtle" aria-live="polite">
+          {activeMode.description}
+        </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:gap-8">
         <form
           id={FORM_ID}
           ref={formRef}
@@ -265,7 +269,7 @@ export function CalculatorPage() {
               {hasTabs ? (
                 <button type="button" className="btn-secondary btn-lg w-full sm:w-fit" onClick={() => goToTab("pj")}>
                   Próximo: proposta PJ
-                  <ArrowRight size={18} />
+                  <ArrowRight size={18} aria-hidden />
                 </button>
               ) : null}
             </div>
@@ -276,8 +280,8 @@ export function CalculatorPage() {
               <PJFields prefill={initial.prefill} />
               <ContractFields />
               {hasTabs ? (
-                <button type="button" className="btn-ghost w-fit px-0 hover:bg-transparent" onClick={() => goToTab("clt")}>
-                  <ArrowLeft size={17} />
+                <button type="button" className="btn-ghost w-fit px-2" onClick={() => goToTab("clt")}>
+                  <ArrowLeft size={17} aria-hidden />
                   Voltar para a proposta CLT
                 </button>
               ) : null}
@@ -285,8 +289,8 @@ export function CalculatorPage() {
           ) : null}
 
           {mode === "clt_to_pj" ? (
-            <p className="flex gap-2 rounded-2xl border border-line bg-white p-4 text-sm text-ink/65">
-              <Info size={18} className="mt-0.5 shrink-0 text-ink/40" />
+            <p className="flex gap-2 rounded-lg border border-line bg-white p-4 text-sm text-muted">
+              <Info size={18} className="mt-0.5 shrink-0 text-subtle" aria-hidden />
               Para o lado PJ usamos premissas padrão: Simples Nacional com Fator R, contador de R$ 250, plano de saúde de
               R$ 700, 12 meses faturados e margem de risco média.
             </p>
@@ -296,14 +300,27 @@ export function CalculatorPage() {
           {!hasTabs || tab === "pj" ? submitButton("lg:hidden") : null}
         </form>
 
-        <aside ref={resultRef} className="grid scroll-mt-24 content-start gap-4 lg:sticky lg:top-6 lg:self-start">
-          <div className="card hidden p-4 lg:block">
+        {/* --sticky-offset vem do layout: altura do header fixo das paginas publicas (0 no layout com sidebar). */}
+        <aside
+          ref={resultRef}
+          aria-label="Resultado"
+          className="grid scroll-mt-24 content-start gap-3 lg:sticky lg:top-[calc(var(--sticky-offset,0px)+1.5rem)] lg:self-start"
+        >
+          <div className="hidden lg:block">
             {submitButton("")}
-            <p className="hint mt-2.5 text-center">
+            <p className="hint mt-2 text-center">
               {hasTabs ? "Usa os valores das duas abas, CLT e PJ." : "O resultado aparece logo abaixo."}
             </p>
           </div>
-          <ResultPanel key={resultVersion} mode={mode} result={result} error={error} />
+          {stale && result ? (
+            <p role="status" className="flex items-start gap-2 rounded-lg border border-pj/30 bg-pj-soft px-3.5 py-2.5 text-sm text-pj-ink">
+              <RefreshCw size={16} className="mt-0.5 shrink-0" aria-hidden />
+              Você mudou valores depois do cálculo. Recalcule para atualizar o resultado.
+            </p>
+          ) : null}
+          <div className={stale && result ? "opacity-60 transition-opacity duration-base" : "transition-opacity duration-base"}>
+            <ResultPanel key={resultVersion} mode={mode} result={result} error={error} />
+          </div>
         </aside>
       </div>
     </div>
@@ -321,13 +338,13 @@ function ProposalTabs({
   salary: number;
   pjRate: number;
 }) {
-  const items: Array<{ id: TabId; label: string; value: number; icon: LucideIcon; on: string; dot: string }> = [
-    { id: "clt", label: "Proposta CLT", value: salary, icon: Building2, on: "border-clt bg-clt-soft text-clt-ink", dot: "bg-clt" },
-    { id: "pj", label: "Proposta PJ", value: pjRate, icon: BriefcaseBusiness, on: "border-pj bg-pj-soft text-pj-ink", dot: "bg-pj" },
+  const items: Array<{ id: TabId; label: string; value: number; suffix: string; on: string; dot: string }> = [
+    { id: "clt", label: "Proposta CLT", value: salary, suffix: "bruto", on: "border-clt text-clt-ink", dot: "bg-clt" },
+    { id: "pj", label: "Proposta PJ", value: pjRate, suffix: "por mês", on: "border-pj text-pj-ink", dot: "bg-pj" },
   ];
 
   return (
-    <div role="tablist" aria-label="Propostas" className="grid grid-cols-2 gap-2">
+    <div role="tablist" aria-label="Propostas" className="grid grid-cols-2 border-b border-line">
       {items.map((item) => {
         const isActive = active === item.id;
         return (
@@ -335,25 +352,20 @@ function ProposalTabs({
             key={item.id}
             type="button"
             role="tab"
+            id={`aba-${item.id}`}
             aria-selected={isActive}
             aria-controls={`painel-${item.id}`}
             onClick={() => onSelect(item.id)}
-            className={`flex items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left transition duration-300 ${
-              isActive ? `${item.on} shadow-card` : "border-transparent bg-white text-ink/60 hover:border-line"
+            className={`-mb-px border-b-2 px-1 pb-3 pt-1 text-left transition-colors duration-fast ${
+              isActive ? item.on : "border-transparent text-muted hover:border-line hover:text-ink"
             }`}
           >
-            <span
-              className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${isActive ? "bg-white/70" : "bg-paper"}`}
-            >
-              <item.icon size={17} />
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className={`h-2 w-2 rounded-full ${item.dot}`} aria-hidden />
+              {item.label}
             </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold">{item.label}</span>
-              <span className="num flex items-center gap-1.5 text-xs opacity-80">
-                <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} aria-hidden />
-                {BRL0.format(item.value)}
-                {item.id === "pj" ? " /mês" : " bruto"}
-              </span>
+            <span className="num mt-0.5 block text-[0.8125rem] text-subtle">
+              {BRL0.format(item.value)} {item.suffix}
             </span>
           </button>
         );
@@ -405,7 +417,7 @@ function readPJ(form: FormData): PJPayload {
 
 function CLTFields({ prefill }: { prefill: Prefill }) {
   return (
-    <FormSection side="clt" title="Proposta CLT" icon={Building2}>
+    <FormSection side="clt" title="Proposta CLT">
       <div className="grid gap-4 sm:grid-cols-2">
         <MoneyField name="cltGrossSalary" label="Salário bruto mensal" defaultValue={String(prefill.salary ?? 10000)} />
         <MoneyField
@@ -419,7 +431,7 @@ function CLTFields({ prefill }: { prefill: Prefill }) {
       </div>
 
       <fieldset className="mt-5">
-        <legend className="mb-2 text-sm font-medium text-ink/80">Direitos considerados</legend>
+        <legend className="mb-2 text-sm font-medium text-muted">Direitos considerados</legend>
         <div className="flex flex-wrap gap-2">
           <Toggle name="includeThirteenth" label="13º salário" />
           <Toggle name="includeVacation" label="Férias + 1/3" />
@@ -453,7 +465,7 @@ function PJFields({ prefill }: { prefill: Prefill }) {
   const [regime, setRegime] = useState("auto");
 
   return (
-    <FormSection side="pj" title="Proposta PJ" icon={BriefcaseBusiness}>
+    <FormSection side="pj" title="Proposta PJ">
       <div className="grid gap-4 sm:grid-cols-2">
         <MoneyField name="pjMonthlyRate" label="Valor mensal da nota" defaultValue={String(prefill.pjRate ?? 15000)} />
         <NumberField
@@ -510,7 +522,7 @@ function PJFields({ prefill }: { prefill: Prefill }) {
           <MoneyField name="pjOtherMonthlyCosts" label="Outros custos mensais" defaultValue="0" />
         </div>
 
-        <p className="mb-2 mt-5 text-sm font-medium text-ink/80">Quanto separar por mês</p>
+        <p className="mb-1 mt-5 text-sm font-medium text-muted">Quanto separar por mês</p>
         <p className="hint mb-3">Sugestão de poupança. Não reduz o pacote anual, porque o dinheiro continua seu.</p>
         <div className="grid gap-4 sm:grid-cols-4">
           <NumberField name="pjVacationReserveRate" label="Férias" defaultValue="8.33" suffix="%" />
@@ -525,8 +537,7 @@ function PJFields({ prefill }: { prefill: Prefill }) {
 
 function ContractFields() {
   return (
-    <FormSection side="pj" title="Contrato PJ" icon={ShieldCheck}>
-      <p className="hint -mt-2 mb-4">Define a margem de risco sobre o valor de empate.</p>
+    <FormSection side="pj" title="Contrato PJ" description="Define a margem de risco sobre o valor de empate.">
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
           name="pjContractRisk"
@@ -553,41 +564,45 @@ function ContractFields() {
 function FormSection({
   side,
   title,
-  icon: Icon,
+  description,
   children,
 }: {
   side: "clt" | "pj";
   title: string;
-  icon: LucideIcon;
+  description?: string;
   children: ReactNode;
 }) {
-  const accent = side === "clt" ? "bg-clt-soft text-clt" : "bg-pj-soft text-pj";
-  const bar = side === "clt" ? "bg-clt" : "bg-pj";
+  const rule = side === "clt" ? "before:bg-clt" : "before:bg-pj";
 
   return (
-    <section className="card relative overflow-hidden p-5 sm:p-6">
-      <span className={`absolute inset-x-0 top-0 h-1 ${bar}`} aria-hidden />
-      <div className="mb-5 flex items-center gap-3">
-        <span className={`grid h-10 w-10 place-items-center rounded-2xl ${accent}`}>
-          <Icon size={18} />
-        </span>
-        <h2 className="text-lg font-bold">{title}</h2>
-      </div>
-      {children}
+    <section
+      className={`card relative p-5 before:absolute before:inset-y-5 before:left-0 before:w-[3px] before:rounded-r before:content-[''] sm:p-6 ${rule}`}
+    >
+      <h2 className="font-sans text-base font-semibold tracking-normal">{title}</h2>
+      {description ? <p className="hint mt-0.5">{description}</p> : null}
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
 
 function Advanced({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <details className="group mt-5 rounded-2xl border border-line bg-paper/60">
-      <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink/75 hover:text-ink">
+    <details className="group mt-5 border-t border-line pt-1">
+      <summary className="-mx-2 flex min-h-[2.75rem] cursor-pointer items-center justify-between gap-3 rounded-md px-2 text-sm font-semibold text-muted hover:text-ink">
         {title}
-        <ChevronDown size={18} className="transition group-open:rotate-180" />
+        <ChevronDown size={18} className="transition-transform duration-base group-open:rotate-180" aria-hidden />
       </summary>
-      <div className="border-t border-line px-4 pb-4 pt-4">{children}</div>
+      <div className="pb-1 pt-3">{children}</div>
     </details>
   );
+}
+
+function FieldHint({ id, hint }: { id: string; hint?: string }) {
+  return hint ? (
+    <span id={`${id}-hint`} className="hint">
+      {hint}
+    </span>
+  ) : null;
 }
 
 function NumberField({
@@ -616,13 +631,14 @@ function NumberField({
           min="0"
           step={step}
           defaultValue={defaultValue}
+          aria-describedby={hint ? `${name}-hint` : undefined}
           className={`num ${suffix ? "pr-16" : ""}`}
         />
         {suffix ? (
-          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-ink/40">{suffix}</span>
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-subtle">{suffix}</span>
         ) : null}
       </div>
-      {hint ? <span className="hint">{hint}</span> : null}
+      <FieldHint id={name} hint={hint} />
     </div>
   );
 }
@@ -662,12 +678,14 @@ function MoneyField({
         name={name}
         type="text"
         inputMode="numeric"
+        autoComplete="off"
         className="num"
         placeholder={placeholder}
         value={value}
+        aria-describedby={hint ? `${name}-hint` : undefined}
         onChange={(event) => handleChange(event.target.value)}
       />
-      {hint ? <span className="hint">{hint}</span> : null}
+      <FieldHint id={name} hint={hint} />
     </div>
   );
 }
@@ -688,26 +706,38 @@ function Select({
   return (
     <div className="grid content-start gap-1.5">
       <label htmlFor={name}>{label}</label>
-      <select id={name} name={name} defaultValue={defaultValue}>
+      <select id={name} name={name} defaultValue={defaultValue} aria-describedby={hint ? `${name}-hint` : undefined}>
         {options.map(([value, labelText]) => (
           <option key={value} value={value}>
             {labelText}
           </option>
         ))}
       </select>
-      {hint ? <span className="hint">{hint}</span> : null}
+      <FieldHint id={name} hint={hint} />
     </div>
   );
 }
 
+// Caixa de selecao com marca visivel: o estado nao depende so da cor.
 function Toggle({ name, label, defaultChecked = true }: { name: string; label: string; defaultChecked?: boolean }) {
+  const [checked, setChecked] = useState(defaultChecked);
+
   return (
-    <label className="relative cursor-pointer">
-      <input className="peer sr-only" name={name} type="checkbox" defaultChecked={defaultChecked} />
-      <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-sm text-ink/60 transition peer-checked:border-mint peer-checked:bg-mint-soft peer-checked:text-mint-dark peer-focus-visible:ring-4 peer-focus-visible:ring-mint/25">
-        <span className="h-2 w-2 rounded-full bg-current opacity-70" aria-hidden />
-        {label}
+    <label
+      className={`inline-flex min-h-[2.5rem] cursor-pointer items-center gap-2.5 rounded-lg border px-3 text-sm font-medium transition-colors duration-fast has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-mint has-[:focus-visible]:ring-offset-2 ${
+        checked ? "border-mint/40 bg-mint-soft text-mint-dark" : "border-line bg-white text-muted hover:border-ink/25"
+      }`}
+    >
+      <input className="sr-only" name={name} type="checkbox" checked={checked} onChange={(event) => setChecked(event.target.checked)} />
+      <span
+        className={`grid h-4 w-4 shrink-0 place-items-center rounded-[4px] border transition-colors duration-fast ${
+          checked ? "border-mint bg-mint text-white" : "border-ink/30 bg-white"
+        }`}
+        aria-hidden
+      >
+        {checked ? <Check size={12} strokeWidth={3} /> : null}
       </span>
+      {label}
     </label>
   );
 }
@@ -723,9 +753,9 @@ function ResultPanel({
 }) {
   if (error) {
     return (
-      <div className="card animate-shake border-clay/30 p-6">
-        <h2 className="text-lg font-bold text-clay">Não foi possível calcular</h2>
-        <p className="mt-2 text-sm text-ink/70">{error} Confira se a API está no ar e tente de novo.</p>
+      <div className="card animate-shake border-clay/40 p-5" role="alert">
+        <h2 className="font-sans text-base font-semibold tracking-normal text-clay">Não foi possível calcular</h2>
+        <p className="mt-1.5 text-sm text-muted">{error}</p>
       </div>
     );
   }
@@ -743,26 +773,14 @@ function ResultPanel({
 
 function EmptyResult({ mode }: { mode: CalculatorMode }) {
   return (
-    <div className="card p-6">
-      <span className="grid h-12 w-12 animate-float-slow place-items-center rounded-2xl bg-forest text-lime">
-        <Scale size={22} />
-      </span>
-      <h2 className="mt-4 text-lg font-bold">Seu resultado aparece aqui</h2>
-      <p className="mt-2 text-sm leading-6 text-ink/60">{emptyResultText(mode)}</p>
-      <ul className="mt-5 grid gap-2.5 text-sm text-ink/65">
-        <li className="flex gap-2">
-          <ShieldCheck size={17} className="mt-0.5 shrink-0 text-mint" />
-          Tabelas de INSS e IR 2026, com a isenção até R$ 5 mil
-        </li>
-        <li className="flex gap-2">
-          <ShieldCheck size={17} className="mt-0.5 shrink-0 text-mint" />
-          Simples Nacional com Fator R e pró-labore
-        </li>
-        <li className="flex gap-2">
-          <ShieldCheck size={17} className="mt-0.5 shrink-0 text-mint" />
-          Sem cadastro para simular
-        </li>
-      </ul>
+    <div className="card border-dashed bg-transparent p-5 sm:p-6">
+      <h2 className="font-sans text-base font-semibold tracking-normal">Seu resultado aparece aqui</h2>
+      <p className="mt-1.5 text-sm leading-6 text-muted">{emptyResultText(mode)}</p>
+      <dl className="mt-4 border-t border-line pt-3 text-sm">
+        <LedgerRow label="INSS e IR" value="tabelas de 2026" />
+        <LedgerRow label="Isenção de IR" value="até R$ 5 mil" />
+        <LedgerRow label="Lado PJ" value="Simples com Fator R" />
+      </dl>
     </div>
   );
 }
@@ -770,17 +788,17 @@ function EmptyResult({ mode }: { mode: CalculatorMode }) {
 const verdicts = {
   pj: {
     label: "PJ compensa mais",
-    tone: "border-pj/30 bg-pj-soft",
+    rule: "border-l-pj",
     title: "text-pj-ink",
   },
   clt: {
     label: "CLT compensa mais",
-    tone: "border-clt/30 bg-clt-soft",
+    rule: "border-l-clt",
     title: "text-clt-ink",
   },
   neutral: {
     label: "PJ empata, mas sem folga para o risco",
-    tone: "border-line bg-paper",
+    rule: "border-l-ink/30",
     title: "text-ink",
   },
 } as const;
@@ -790,62 +808,69 @@ function CompareResultPanel({ result }: { result: CompareResult }) {
   const gain = result.annualDifference;
 
   return (
-    <div className="card animate-fade-up overflow-hidden">
-      <div className={`border-b p-6 ${verdict.tone}`}>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">Veredito</p>
-        <h2 className={`mt-1 animate-pop-in text-2xl font-bold ${verdict.title}`} style={{ animationDelay: "150ms" }}>
-          {verdict.label}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-ink/70">{result.summary}</p>
-      </div>
+    <article className="card animate-fade-up overflow-hidden" aria-live="polite">
+      <header className={`border-l-4 px-5 py-5 sm:px-6 ${verdict.rule}`}>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Veredito</p>
+        <h2 className={`mt-1 text-[1.6rem] leading-tight ${verdict.title}`}>{verdict.label}</h2>
+        <p className="mt-2 flex flex-wrap items-baseline gap-x-2">
+          <span className="num font-display text-[1.75rem] font-semibold leading-none text-ink">
+            {gain >= 0 ? "+" : "−"}
+            <Money value={Math.abs(gain)} />
+          </span>
+          <span className="text-sm text-muted">por ano {gain >= 0 ? "a favor do PJ" : "a favor da CLT"}</span>
+        </p>
+        <p className="mt-3 text-sm leading-6 text-muted">{result.summary}</p>
+      </header>
 
-      <div className="p-6">
+      <Block>
         <AnnualBars clt={result.clt.annualNet} pj={result.pj.annualNet} />
+      </Block>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
+      <Block title="Para negociar como PJ">
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="Para empatar" value={<Money value={result.minimumPjToBreakEven} />} detail="nota por mês, sem margem" />
           <Stat
-            label="Diferença no ano"
-            value={`${gain >= 0 ? "+" : "−"}${BRL0.format(Math.abs(gain))}`}
-            detail={gain >= 0 ? "a favor do PJ" : "a favor da CLT"}
-          />
-          <Stat label="Líquido no mês" value={<Money value={result.pj.monthlyNet} />} detail={`PJ · CLT ${BRL0.format(result.clt.monthlyNet)}`} />
-          <Stat label="PJ para empatar" value={<Money value={result.minimumPjToBreakEven} />} detail="por mês" />
-          <Stat
-            label="PJ recomendado"
+            label="Recomendado"
             value={<Money value={result.minimumPjRecommended} />}
-            detail={`com ${PERCENT.format(result.pj.riskPremiumRate)} de margem`}
+            detail={`com ${PERCENT.format(result.pj.riskPremiumRate)} de margem de risco`}
             highlight
           />
         </div>
+      </Block>
 
+      <Block title="Líquido por mês">
+        <dl>
+          <LedgerRow side="clt" label="CLT" value={BRL0.format(result.clt.monthlyNet)} />
+          <LedgerRow side="pj" label="PJ, antes da reserva" value={BRL0.format(result.pj.monthlyNet)} />
+        </dl>
         <SetAside value={result.pj.monthlyReserve} />
+      </Block>
 
-        <Breakdown>
-          <MetricGroup title="CLT">
-            <Metric label="INSS mensal" value={BRL.format(result.clt.monthlyInss)} />
-            <Metric label="IRRF mensal" value={BRL.format(result.clt.monthlyIrrf)} />
-            <Metric label="13º líquido" value={BRL.format(result.clt.annualThirteenthNet)} />
-            <Metric label="1/3 de férias líquido" value={BRL.format(result.clt.annualVacationNet)} />
-            <Metric label="FGTS no ano" value={BRL.format(result.clt.annualFgts)} />
-            {result.clt.annualTerminationValue ? (
-              <Metric label="Multa de 40% (proporcional)" value={BRL.format(result.clt.annualTerminationValue)} />
-            ) : null}
-            {result.clt.annualBonusNet ? <Metric label="Bônus líquido" value={BRL.format(result.clt.annualBonusNet)} /> : null}
-            {result.clt.annualPlrNet ? <Metric label="PLR líquida" value={BRL.format(result.clt.annualPlrNet)} /> : null}
-          </MetricGroup>
-          <MetricGroup title="PJ">
-            <Metric label="Regime" value={formatRegime(result.pj.taxRegime)} />
-            <Metric label="Alíquota efetiva" value={PERCENT.format(result.pj.effectiveTaxRate)} />
-            <Metric label="Fator R" value={PERCENT.format(result.pj.factorR)} />
-            <Metric label="Pró-labore" value={BRL.format(result.pj.proLabore)} />
-            <Metric label="Impostos por mês" value={BRL.format(result.pj.monthlyTaxes)} />
-            <Metric label="Custos fixos por mês" value={BRL.format(result.pj.monthlyCosts)} />
-          </MetricGroup>
-          <Reasons reasons={result.reasons} />
-        </Breakdown>
-      </div>
+      <Breakdown>
+        <MetricGroup title="CLT">
+          <Metric label="INSS mensal" value={BRL.format(result.clt.monthlyInss)} />
+          <Metric label="IRRF mensal" value={BRL.format(result.clt.monthlyIrrf)} />
+          <Metric label="13º líquido" value={BRL.format(result.clt.annualThirteenthNet)} />
+          <Metric label="1/3 de férias líquido" value={BRL.format(result.clt.annualVacationNet)} />
+          <Metric label="FGTS no ano" value={BRL.format(result.clt.annualFgts)} />
+          {result.clt.annualTerminationValue ? (
+            <Metric label="Multa de 40% (proporcional)" value={BRL.format(result.clt.annualTerminationValue)} />
+          ) : null}
+          {result.clt.annualBonusNet ? <Metric label="Bônus líquido" value={BRL.format(result.clt.annualBonusNet)} /> : null}
+          {result.clt.annualPlrNet ? <Metric label="PLR líquida" value={BRL.format(result.clt.annualPlrNet)} /> : null}
+        </MetricGroup>
+        <MetricGroup title="PJ">
+          <Metric label="Regime" value={formatRegime(result.pj.taxRegime)} />
+          <Metric label="Alíquota efetiva" value={PERCENT.format(result.pj.effectiveTaxRate)} />
+          <Metric label="Fator R" value={PERCENT.format(result.pj.factorR)} />
+          <Metric label="Pró-labore" value={BRL.format(result.pj.proLabore)} />
+          <Metric label="Impostos por mês" value={BRL.format(result.pj.monthlyTaxes)} />
+          <Metric label="Custos fixos por mês" value={BRL.format(result.pj.monthlyCosts)} />
+        </MetricGroup>
+        <Reasons reasons={result.reasons} />
+      </Breakdown>
       <Disclaimer />
-    </div>
+    </article>
   );
 }
 
@@ -855,62 +880,73 @@ function EquivalentResultPanel({ mode, result }: { mode: Exclude<CalculatorMode,
   const pjAnnual = isCLTToPJ ? result.equivalent.annualNet : result.reference.annualNet;
   const pj = isCLTToPJ ? result.equivalent : result.reference;
   const clt = isCLTToPJ ? result.reference : result.equivalent;
+  const side = isCLTToPJ ? verdicts.pj : verdicts.clt;
 
   return (
-    <div className="card animate-fade-up overflow-hidden">
-      <div className={`border-b p-6 ${isCLTToPJ ? verdicts.pj.tone : verdicts.clt.tone}`}>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">
+    <article className="card animate-fade-up overflow-hidden" aria-live="polite">
+      <header className={`border-l-4 px-5 py-5 sm:px-6 ${side.rule}`}>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">
           {isCLTToPJ ? "Peça como PJ pelo menos" : "Salário CLT equivalente"}
         </p>
-        <p className={`num mt-1 text-4xl font-bold ${isCLTToPJ ? verdicts.pj.title : verdicts.clt.title}`}>
+        <p className={`num mt-1.5 font-display text-[2.4rem] font-semibold leading-none ${side.title}`}>
           <Money value={isCLTToPJ ? result.minimumPjRecommended : result.equivalentValue} />
-          <span className="text-base font-semibold text-ink/45"> /mês</span>
+          <span className="ml-1 font-sans text-base font-medium text-muted">/mês</span>
         </p>
-        <p className="mt-2 text-sm leading-6 text-ink/70">{result.summary}</p>
-      </div>
+        <p className="mt-3 text-sm leading-6 text-muted">{result.summary}</p>
+      </header>
 
-      <div className="p-6">
+      <Block>
         <AnnualBars clt={cltAnnual} pj={pjAnnual} />
+      </Block>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
+      <Block title={isCLTToPJ ? "De onde vem esse valor" : "Líquido por mês"}>
+        <dl>
           {isCLTToPJ ? (
             <>
-              <Stat label="Empate exato" value={<Money value={result.minimumPjToBreakEven} />} detail="por mês, sem margem" />
-              <Stat label="Margem de risco" value={PERCENT.format(result.riskPremiumRate)} detail="sobre o empate" />
-              <Stat label="Líquido PJ no mês" value={<Money value={result.equivalent.monthlyNet} />} detail="no valor recomendado" />
-              <Stat label="Líquido CLT no mês" value={<Money value={result.reference.monthlyNet} />} detail="proposta atual" />
+              <LedgerRow label="Nota para empatar" value={BRL0.format(result.minimumPjToBreakEven)} />
+              <LedgerRow label="Margem de risco" value={`+ ${PERCENT.format(result.riskPremiumRate)}`} />
+              <LedgerRow side="pj" label="Líquido PJ no valor recomendado" value={BRL0.format(result.equivalent.monthlyNet)} />
+              <LedgerRow side="clt" label="Líquido CLT da proposta" value={BRL0.format(result.reference.monthlyNet)} />
             </>
           ) : (
             <>
-              <Stat label="Líquido CLT no mês" value={<Money value={result.equivalent.monthlyNet} />} detail="no salário equivalente" />
-              <Stat label="Líquido PJ no mês" value={<Money value={result.reference.monthlyNet} />} detail="proposta atual" />
+              <LedgerRow side="clt" label="Líquido CLT no salário equivalente" value={BRL0.format(result.equivalent.monthlyNet)} />
+              <LedgerRow side="pj" label="Líquido PJ da proposta" value={BRL0.format(result.reference.monthlyNet)} />
             </>
           )}
-        </div>
-
+        </dl>
         <SetAside value={pj.monthlyReserve} />
+      </Block>
 
-        <Breakdown>
-          <MetricGroup title="CLT">
-            <Metric label="INSS mensal" value={BRL.format(clt.monthlyInss)} />
-            <Metric label="IRRF mensal" value={BRL.format(clt.monthlyIrrf)} />
-            <Metric label="13º líquido" value={BRL.format(clt.annualThirteenthNet)} />
-            <Metric label="1/3 de férias líquido" value={BRL.format(clt.annualVacationNet)} />
-            <Metric label="FGTS no ano" value={BRL.format(clt.annualFgts)} />
-          </MetricGroup>
-          <MetricGroup title="PJ">
-            <Metric label="Regime" value={formatRegime(pj.taxRegime)} />
-            <Metric label="Alíquota efetiva" value={PERCENT.format(pj.effectiveTaxRate)} />
-            <Metric label="Fator R" value={PERCENT.format(pj.factorR)} />
-            <Metric label="Pró-labore" value={BRL.format(pj.proLabore)} />
-            <Metric label="Impostos por mês" value={BRL.format(pj.monthlyTaxes)} />
-            <Metric label="Custos fixos por mês" value={BRL.format(pj.monthlyCosts)} />
-          </MetricGroup>
-          <Reasons reasons={result.reasons} />
-        </Breakdown>
-      </div>
+      <Breakdown>
+        <MetricGroup title="CLT">
+          <Metric label="INSS mensal" value={BRL.format(clt.monthlyInss)} />
+          <Metric label="IRRF mensal" value={BRL.format(clt.monthlyIrrf)} />
+          <Metric label="13º líquido" value={BRL.format(clt.annualThirteenthNet)} />
+          <Metric label="1/3 de férias líquido" value={BRL.format(clt.annualVacationNet)} />
+          <Metric label="FGTS no ano" value={BRL.format(clt.annualFgts)} />
+        </MetricGroup>
+        <MetricGroup title="PJ">
+          <Metric label="Regime" value={formatRegime(pj.taxRegime)} />
+          <Metric label="Alíquota efetiva" value={PERCENT.format(pj.effectiveTaxRate)} />
+          <Metric label="Fator R" value={PERCENT.format(pj.factorR)} />
+          <Metric label="Pró-labore" value={BRL.format(pj.proLabore)} />
+          <Metric label="Impostos por mês" value={BRL.format(pj.monthlyTaxes)} />
+          <Metric label="Custos fixos por mês" value={BRL.format(pj.monthlyCosts)} />
+        </MetricGroup>
+        <Reasons reasons={result.reasons} />
+      </Breakdown>
       <Disclaimer />
-    </div>
+    </article>
+  );
+}
+
+function Block({ title, children }: { title?: string; children: ReactNode }) {
+  return (
+    <section className="border-t border-line px-5 py-4 sm:px-6">
+      {title ? <h3 className="mb-2.5 text-sm font-semibold text-ink">{title}</h3> : null}
+      {children}
+    </section>
   );
 }
 
@@ -923,20 +959,22 @@ function AnnualBars({ clt, pj }: { clt: number; pj: number }) {
 
   return (
     <div>
-      <p className="mb-3 text-sm font-semibold text-ink/70">Pacote anual disponível</p>
-      <div className="grid gap-3">
+      <h3 className="mb-2.5 text-sm font-semibold text-ink">
+        Dinheiro disponível no ano <span className="font-normal text-subtle">· depois de impostos e custos</span>
+      </h3>
+      <div className="grid gap-2.5">
         {rows.map((row, index) => (
           <div key={row.label}>
             <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
               <span className={`font-semibold ${row.text}`}>{row.label}</span>
-              <span className="num font-bold">
+              <span className="num font-semibold">
                 <Money value={row.value} />
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-paper">
+            <div className="h-2 overflow-hidden rounded-sm bg-paper">
               <div
-                className={`h-full origin-left animate-grow-x rounded-full ${row.bar}`}
-                style={{ width: `${Math.max(4, (row.value / max) * 100)}%`, animationDelay: `${index * 150}ms` }}
+                className={`h-full origin-left animate-grow-x rounded-sm ${row.bar}`}
+                style={{ width: `${Math.max(4, (row.value / max) * 100)}%`, animationDelay: `${index * 80}ms` }}
               />
             </div>
           </div>
@@ -948,25 +986,41 @@ function AnnualBars({ clt, pj }: { clt: number; pj: number }) {
 
 function Stat({ label, value, detail, highlight = false }: { label: string; value: ReactNode; detail?: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-2xl p-3.5 transition ${highlight ? "bg-forest text-white shadow-float" : "bg-paper"}`}>
-      <p className={`text-xs font-medium ${highlight ? "text-white/65" : "text-ink/55"}`}>{label}</p>
-      <p className={`num mt-1 text-lg font-bold ${highlight ? "text-lime" : "text-ink"}`}>{value}</p>
-      {detail ? <p className={`text-xs ${highlight ? "text-white/55" : "text-ink/45"}`}>{detail}</p> : null}
+    <div className={`rounded-lg p-3.5 ${highlight ? "bg-forest text-white" : "border border-line bg-paper/60"}`}>
+      <p className={`text-xs font-medium ${highlight ? "text-white/75" : "text-muted"}`}>{label}</p>
+      <p className={`num mt-1 font-display text-[1.35rem] font-semibold leading-tight ${highlight ? "text-lime" : "text-ink"}`}>
+        {value}
+      </p>
+      {detail ? <p className={`mt-0.5 text-xs leading-4 ${highlight ? "text-white/70" : "text-subtle"}`}>{detail}</p> : null}
     </div>
   );
 }
 
+function LedgerRow({ label, value, side }: { label: string; value: string; side?: "clt" | "pj" }) {
+  return (
+    <div className="ledger-row">
+      <dt className="flex items-center gap-2">
+        {side ? <span className={`h-2 w-2 shrink-0 rounded-full ${side === "clt" ? "bg-clt" : "bg-pj"}`} aria-hidden /> : null}
+        {label}
+      </dt>
+      <span className="ledger-fill" aria-hidden />
+      <dd className="num text-right font-semibold text-ink">{value}</dd>
+    </div>
+  );
+}
+
+// Count-up curto: comunica que o numero mudou sem atrasar a leitura.
 function Money({ value }: { value: number }) {
-  return <>{BRL0.format(useCountUp(value))}</>;
+  return <>{BRL0.format(useCountUp(value, { duration: 450 }))}</>;
 }
 
 function SetAside({ value }: { value: number }) {
   return (
-    <p className="mt-4 flex gap-2 rounded-2xl border border-pj/20 bg-pj-soft/60 p-3.5 text-sm text-ink/70">
-      <Info size={17} className="mt-0.5 shrink-0 text-pj" />
+    <p className="mt-3 flex gap-2 rounded-lg bg-pj-soft px-3.5 py-3 text-sm text-pj-ink">
+      <PiggyBank size={17} className="mt-0.5 shrink-0" aria-hidden />
       <span>
-        Como PJ, separe cerca de <strong className="num text-ink">{BRL0.format(value)}</strong> por mês para férias, 13º e
-        emergência. Esse dinheiro continua seu.
+        Como PJ, separe cerca de <strong className="num">{BRL0.format(value)}</strong> por mês para férias, 13º e emergência.
+        Esse dinheiro continua seu.
       </span>
     </p>
   );
@@ -974,12 +1028,12 @@ function SetAside({ value }: { value: number }) {
 
 function Breakdown({ children }: { children: ReactNode }) {
   return (
-    <details className="group mt-5 border-t border-line pt-4">
-      <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-ink/75 hover:text-ink">
-        Como chegamos nesse número
-        <ChevronDown size={18} className="transition group-open:rotate-180" />
+    <details className="group border-t border-line">
+      <summary className="flex min-h-[3rem] cursor-pointer items-center justify-between px-5 text-sm font-semibold text-ink hover:bg-paper/60 sm:px-6">
+        Ver a conta completa
+        <ChevronDown size={18} className="text-subtle transition-transform duration-base group-open:rotate-180" aria-hidden />
       </summary>
-      <div className="mt-4 grid gap-5">{children}</div>
+      <div className="grid gap-5 px-5 pb-5 pt-1 sm:px-6">{children}</div>
     </details>
   );
 }
@@ -987,31 +1041,23 @@ function Breakdown({ children }: { children: ReactNode }) {
 function MetricGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-ink/45">{title}</p>
-      <div className="divide-y divide-line">{children}</div>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-subtle">{title}</p>
+      <dl>{children}</dl>
     </div>
   );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-2 text-sm">
-      <span className="text-ink/60">{label}</span>
-      <strong className="num text-right font-semibold">{value}</strong>
-    </div>
-  );
+  return <LedgerRow label={label} value={value} />;
 }
 
 function Reasons({ reasons }: { reasons: string[] }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink/45">Por quê</p>
-      <ul className="grid gap-2 text-sm leading-6 text-ink/65">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-subtle">Por quê</p>
+      <ul className="grid list-disc gap-1.5 pl-5 text-sm leading-6 text-muted marker:text-ink/30">
         {reasons.map((reason) => (
-          <li key={reason} className="flex gap-2">
-            <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ink/25" aria-hidden />
-            {reason}
-          </li>
+          <li key={reason}>{reason}</li>
         ))}
       </ul>
     </div>
@@ -1020,13 +1066,14 @@ function Reasons({ reasons }: { reasons: string[] }) {
 
 function Disclaimer() {
   return (
-    <p className="border-t border-line bg-paper/60 px-6 py-3 text-xs leading-5 text-ink/45">
+    <p className="border-t border-line bg-paper/60 px-5 py-3 text-xs leading-5 text-subtle sm:px-6">
       Simulação educativa com as regras de 2026. Não substitui a análise de um contador ou advogado.
     </p>
   );
 }
 
-function submitLabel(mode: CalculatorMode) {
+function submitLabel(mode: CalculatorMode, hasResult: boolean) {
+  if (hasResult) return "Recalcular";
   if (mode === "clt_to_pj") {
     return "Calcular quanto pedir como PJ";
   }
@@ -1034,6 +1081,14 @@ function submitLabel(mode: CalculatorMode) {
     return "Calcular salário CLT equivalente";
   }
   return "Comparar propostas";
+}
+
+// Falha de rede chega como TypeError em ingles ("Failed to fetch"); nunca mostrar isso ao usuario.
+function friendlyError(err: unknown) {
+  if (err instanceof TypeError) {
+    return "Não conseguimos falar com o servidor. Verifique sua conexão e tente de novo.";
+  }
+  return err instanceof Error ? err.message : "Algo deu errado no cálculo. Tente de novo.";
 }
 
 function emptyResultText(mode: CalculatorMode) {

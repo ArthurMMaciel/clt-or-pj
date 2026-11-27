@@ -1,72 +1,68 @@
 import type { Config } from "tailwindcss";
 
+// Direcao "livro-caixa": precisao e calma. Filetes no lugar de sombras, raios pequenos,
+// serifa editorial nos titulos e numeros tabulares. Ver docs/product-evolution/DESIGN_SYSTEM.md.
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
-        display: ["'Inter Tight'", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Titulos (h1, h2) e numeros de destaque. Serifa transmite "documento" e diferencia de SaaS generico.
+        display: ["'Source Serif 4'", "Georgia", "ui-serif", "serif"],
       },
       colors: {
         ink: "#0e1d17",
-        paper: "#f3f5f0",
-        line: "#e1e6de",
+        // Texto secundario (contraste ~7:1 no branco) e terciario (~4.8:1, minimo para texto pequeno).
+        muted: "#45524b",
+        subtle: "#5f6b65",
+        paper: "#f4f5f1",
+        line: "#dfe3dc",
         // Acao principal da marca; neutra em relacao a CLT e PJ.
         mint: { DEFAULT: "#17694a", dark: "#0f4f37", soft: "#e5f1e9" },
         // Superficies escuras de destaque (hero, CTA final, painel do login).
         forest: { DEFAULT: "#103d2c", deep: "#0a281d", light: "#2f7a52" },
-        // Unico acento: marca o que importa (numero recomendado, CTA sobre fundo escuro).
+        // Acento usado com parcimonia: so sobre fundo forest (numero recomendado, CTA do hero).
         lime: { DEFAULT: "#d4f46a", soft: "#effbc8" },
         // Cada lado da comparacao tem sua cor, usada em badges, barras e veredito.
         clt: { DEFAULT: "#2f5bd3", soft: "#eaf0fd", ink: "#1d3d99" },
         pj: { DEFAULT: "#c46d0d", soft: "#fdf1e0", ink: "#8a4a05" },
-        clay: "#c2412d",
-      },
-      borderRadius: {
-        "4xl": "2rem",
-        "5xl": "2.5rem",
+        clay: "#b8381f",
       },
       boxShadow: {
-        card: "0 1px 2px rgba(14, 29, 23, 0.04), 0 10px 30px -12px rgba(14, 29, 23, 0.10)",
-        lift: "0 2px 6px rgba(14, 29, 23, 0.05), 0 28px 60px -20px rgba(14, 29, 23, 0.22)",
-        float: "0 18px 40px -12px rgba(5, 25, 17, 0.35)",
-        glow: "0 0 0 1px rgba(212, 244, 106, 0.35), 0 12px 40px -8px rgba(212, 244, 106, 0.45)",
+        // Uma unica elevacao, para o que flutua de verdade (gaveta, painel fixo no celular).
+        card: "0 1px 2px rgba(14, 29, 23, 0.05)",
+        overlay: "0 12px 32px -8px rgba(14, 29, 23, 0.25)",
+      },
+      transitionDuration: {
+        fast: "120ms",
+        base: "200ms",
       },
       keyframes: {
         "fade-up": {
-          from: { opacity: "0", transform: "translateY(16px)" },
+          from: { opacity: "0", transform: "translateY(6px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
-        float: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-8px)" },
-        },
         "grow-x": { from: { transform: "scaleX(0)" }, to: { transform: "scaleX(1)" } },
-        "pop-in": {
-          "0%": { opacity: "0", transform: "scale(0.94)" },
-          "100%": { opacity: "1", transform: "scale(1)" },
-        },
         "drawer-in": {
           from: { transform: "translateX(-100%)" },
           to: { transform: "translateX(0)" },
         },
         shake: {
           "0%, 100%": { transform: "translateX(0)" },
-          "20%, 60%": { transform: "translateX(-6px)" },
-          "40%, 80%": { transform: "translateX(6px)" },
+          "25%, 75%": { transform: "translateX(-4px)" },
+          "50%": { transform: "translateX(4px)" },
         },
       },
       animation: {
-        "fade-up": "fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "fade-in": "fade-in 0.5s ease-out both",
-        float: "float 6s ease-in-out infinite",
-        "float-slow": "float 8s ease-in-out infinite",
-        "grow-x": "grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "pop-in": "pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both",
-        shake: "shake 0.4s ease-in-out",
-        "drawer-in": "drawer-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
+        // Resultado novo: entra rapido, sem atrasar a leitura.
+        "fade-up": "fade-up 0.24s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "fade-in": "fade-in 0.2s ease-out both",
+        // Barras do pacote anual: mostram a proporcao entre CLT e PJ.
+        "grow-x": "grow-x 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        shake: "shake 0.3s ease-in-out",
+        "drawer-in": "drawer-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },

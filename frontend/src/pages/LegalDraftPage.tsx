@@ -30,13 +30,13 @@ export function LegalDraftPage({ kind }: { kind: "privacy" | "terms" }) {
         <FileClock size={14} />
         Rascunho em revisão jurídica
       </span>
-      <h1 className="mt-5 text-3xl font-bold">{page.title}</h1>
-      <p className="mt-3 leading-7 text-ink/65">
+      <h1 className="mt-5 text-3xl">{page.title}</h1>
+      <p className="mt-3 leading-7 text-muted">
         O texto completo está sendo preparado com apoio jurídico. Enquanto isso, este é o funcionamento atual do produto:
       </p>
       <ul className="mt-6 grid gap-3">
         {page.facts.map((fact) => (
-          <li key={fact} className="rounded-2xl bg-paper px-4 py-3 text-sm text-ink/75">
+          <li key={fact} className="rounded-lg bg-paper px-4 py-3 text-sm text-muted">
             {fact}
           </li>
         ))}
