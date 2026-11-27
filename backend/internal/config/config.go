@@ -16,9 +16,9 @@ type Config struct {
 	JWTExpiresIn      time.Duration
 	SupabaseURL       string
 	SupabaseSecretKey string
-	SendGridAPIKey    string
-	SendGridFromEmail string
-	SendGridFromName  string
+	ResendAPIKey      string
+	EmailFrom         string
+	EmailFromName     string
 	EmailConfirmURL   string
 	PasswordResetURL  string
 }
@@ -35,11 +35,12 @@ func Load() Config {
 		JWTExpiresIn:      durationEnv("JWT_EXPIRES_IN_MINUTES", 60*24),
 		SupabaseURL:       strings.TrimRight(env("SUPABASE_URL", ""), "/"),
 		SupabaseSecretKey: env("SUPABASE_SECRET_KEY", ""),
-		SendGridAPIKey:    env("SENDGRID_API_KEY", ""),
-		SendGridFromEmail: env("SENDGRID_FROM_EMAIL", "no-reply@example.com"),
-		SendGridFromName:  env("SENDGRID_FROM_NAME", "CLT ou PJ"),
-		EmailConfirmURL:   env("EMAIL_CONFIRM_URL", "http://localhost:5173/confirmar-email"),
-		PasswordResetURL:  env("PASSWORD_RESET_URL", "http://localhost:5173/redefinir-senha"),
+		ResendAPIKey:      env("RESEND_API_KEY", ""),
+		// Remetente de teste do Resend: so entrega para o email da conta Resend. Em producao, usar um dominio verificado.
+		EmailFrom:        env("EMAIL_FROM", "onboarding@resend.dev"),
+		EmailFromName:    env("EMAIL_FROM_NAME", "CLT ou PJ"),
+		EmailConfirmURL:  env("EMAIL_CONFIRM_URL", "http://localhost:5173/confirmar-email"),
+		PasswordResetURL: env("PASSWORD_RESET_URL", "http://localhost:5173/redefinir-senha"),
 	}
 }
 

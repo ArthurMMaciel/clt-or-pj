@@ -26,9 +26,9 @@ func main() {
 	repository := users.NewRepository(supabaseClient)
 	tokenIssuer := auth.NewTokenIssuer(cfg.JWTSecret, cfg.JWTExpiresIn)
 	mailerService := mailer.NewService(
-		cfg.SendGridAPIKey,
-		cfg.SendGridFromEmail,
-		cfg.SendGridFromName,
+		cfg.ResendAPIKey,
+		cfg.EmailFrom,
+		cfg.EmailFromName,
 		cfg.EmailConfirmURL,
 		cfg.PasswordResetURL,
 	)

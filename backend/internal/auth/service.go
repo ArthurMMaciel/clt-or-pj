@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -62,7 +63,10 @@ func (s *Service) Register(name, email, password string) (users.User, error) {
 		return users.User{}, err
 	}
 
-	_ = s.mailer.SendConfirmationEmail(user.Email, user.Name, token)
+	// A conta fica criada mesmo se o envio falhar; o erro vai para o log para aparecer na Vercel.
+	if err := s.mailer.SendConfirmationEmail(user.Email, user.Name, token); err != nil {
+		log.Printf("confirmation email failed: %v", err)
+	}
 	return user, nil
 }
 
