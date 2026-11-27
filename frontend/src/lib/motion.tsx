@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from "react";
 
-// Movimento sem dependencia externa: IntersectionObserver + transicoes CSS (.reveal em styles.css).
-// Tudo respeita prefers-reduced-motion.
+// Movimento sem dependencia externa. Tudo respeita prefers-reduced-motion.
 
 export function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -38,6 +37,8 @@ export function useInView<T extends Element>(options: { once?: boolean; rootMarg
   return { ref, inView };
 }
 
+// Reveal ficou estatico: a entrada no scroll foi removida (atrasava a leitura e animava tudo).
+// Mantido so porque o AdminDashboard (fora das rotas) ainda o importa.
 export function Reveal({
   as: Tag = "div",
   delay = 0,
@@ -59,10 +60,11 @@ export function Reveal({
   );
 }
 
-// Conta de `from` ate `to` quando `start` vira true. Sem animacao se o usuario pediu menos movimento.
-export function useCountUp(to: number, { start = true, duration = 900 }: { start?: boolean; duration?: number } = {}) {
-  const [value, setValue] = useState(start && prefersReducedMotion() ? to : 0);
-  const fromRef = useRef(0);
+// Anima do valor anterior ate `to` quando ele muda. Na montagem mostra o valor final direto:
+// numero financeiro "contando" a partir do zero exibe, por um instante, valores que nao existem.
+export function useCountUp(to: number, { start = true, duration = 450 }: { start?: boolean; duration?: number } = {}) {
+  const [value, setValue] = useState(to);
+  const fromRef = useRef(to);
 
   useEffect(() => {
     if (!start) return;

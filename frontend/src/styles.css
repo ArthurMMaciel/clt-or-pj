@@ -13,23 +13,26 @@
   }
 
   h1,
-  h2,
+  h2 {
+    @apply font-display font-semibold tracking-[-0.015em];
+  }
+
   h3 {
-    @apply font-display tracking-tight;
+    @apply font-semibold tracking-tight;
   }
 
   input,
   select,
   textarea {
-    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition duration-200 placeholder:text-ink/35 hover:border-ink/20 focus:border-mint focus:ring-4 focus:ring-mint/15;
+    @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[0.9375rem] text-ink outline-none transition duration-fast placeholder:text-subtle/70 hover:border-ink/25 focus:border-mint focus:ring-2 focus:ring-mint/20;
   }
 
   label {
-    @apply text-sm font-medium text-ink/80;
+    @apply text-sm font-medium text-muted;
   }
 
   :focus-visible {
-    @apply outline-none ring-4 ring-mint/25;
+    @apply outline-none ring-2 ring-mint ring-offset-2 ring-offset-paper;
   }
 
   details > summary {
@@ -56,40 +59,42 @@
 }
 
 @layer components {
+  /* Superficie padrao: branco com filete. Sem sombra difusa. */
   .card {
-    @apply rounded-3xl border border-line/80 bg-white shadow-card;
+    @apply rounded-xl border border-line bg-white;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition duration-200 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100;
+    @apply inline-flex min-h-[2.5rem] items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition duration-fast active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0;
   }
 
   .btn-primary {
-    @apply btn bg-mint text-white shadow-sm hover:-translate-y-px hover:bg-mint-dark hover:shadow-md;
+    @apply btn bg-mint text-white hover:bg-mint-dark;
   }
 
   .btn-secondary {
-    @apply btn border border-line bg-white text-ink hover:-translate-y-px hover:border-ink/25 hover:shadow-sm;
+    @apply btn border border-line bg-white text-ink hover:border-ink/30 hover:bg-paper;
   }
 
   .btn-ghost {
-    @apply btn text-ink/70 hover:bg-ink/5 hover:text-ink;
+    @apply btn text-muted hover:bg-ink/5 hover:text-ink;
   }
 
+  /* So sobre fundo forest. */
   .btn-lime {
-    @apply btn bg-lime text-forest-deep hover:-translate-y-px hover:bg-lime-soft hover:shadow-glow;
+    @apply btn bg-lime text-forest-deep hover:bg-lime-soft;
   }
 
   .btn-lg {
-    @apply px-6 py-3.5 text-base;
+    @apply min-h-[3rem] px-5 text-base;
   }
 
   .eyebrow {
-    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-mint;
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-mint;
   }
 
   .hint {
-    @apply text-xs leading-5 text-ink/50;
+    @apply text-xs leading-5 text-subtle;
   }
 
   .num {
@@ -97,28 +102,31 @@
   }
 
   .badge {
-    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold;
   }
 
-  /* Entrada no scroll: o componente Reveal adiciona .is-visible quando entra na tela. */
-  .reveal {
-    opacity: 0;
-    transform: translateY(18px);
-    transition:
-      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-    transition-delay: var(--reveal-delay, 0ms);
+  /* Linha de "livro-caixa": rotulo a esquerda, valor a direita, pontilhado guiando o olho. */
+  .ledger-row {
+    @apply flex items-baseline gap-2 py-1.5 text-sm;
   }
 
-  .reveal.is-visible {
-    opacity: 1;
-    transform: none;
+  .ledger-row > :first-child {
+    @apply text-muted;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .reveal {
-      opacity: 1;
-      transform: none;
-    }
+  .ledger-fill {
+    @apply min-w-[1rem] flex-1 translate-y-[-0.2em] border-b border-dotted border-ink/25;
+  }
+
+  /* Papel pautado discreto para superficies escuras de marca. */
+  .ruled-dark {
+    background-color: theme("colors.forest.deep");
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(255, 255, 255, 0.045) 31px,
+      rgba(255, 255, 255, 0.045) 32px
+    );
   }
 }

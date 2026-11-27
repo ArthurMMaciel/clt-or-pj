@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 
 import { APP_ROUTES, AppLayout } from "./components/AppLayout";
@@ -58,31 +57,28 @@ function AppShell() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/80 backdrop-blur-md">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+    // --sticky-offset: altura do header fixo, usada pelo painel de resultado da calculadora.
+    <div className="flex min-h-screen flex-col bg-paper text-ink [--sticky-offset:3.6rem]">
+      <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-semibold">
+        Pular para o conteúdo
+      </a>
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur-sm">
+        <nav className="mx-auto flex h-[3.6rem] max-w-6xl items-center justify-between gap-3 px-4" aria-label="Principal">
           <Logo />
           <div className="flex items-center gap-1 text-sm">
             <span className="hidden sm:block">
               <NavItem to="/calculadora">Calculadora</NavItem>
             </span>
-            <span
-              className="hidden items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-ink/40 sm:inline-flex"
-              aria-disabled="true"
-            >
-              <Sparkles size={14} />
-              IA em breve
-            </span>
             {!user ? <NavItem to="/login">Entrar</NavItem> : null}
             {!user ? (
-              <Link to="/cadastro" className="btn-primary ml-1 whitespace-nowrap px-3.5 py-2">
+              <Link to="/cadastro" className="btn-primary ml-1 whitespace-nowrap px-3.5">
                 Criar conta
               </Link>
             ) : null}
             {user ? (
               <>
                 <NavItem to="/historico">Histórico</NavItem>
-                <button className="btn-secondary ml-1 px-3 py-2 text-xs" onClick={logout}>
+                <button className="btn-secondary ml-1 px-3" onClick={logout}>
                   Sair
                 </button>
               </>
@@ -91,8 +87,9 @@ function AppShell() {
         </nav>
       </header>
 
-      <main className={isLanding ? "w-full flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10"}>{routes}</main>
-
+      <main id="conteudo" className={isLanding ? "w-full flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10"}>
+        {routes}
+      </main>
     </div>
   );
 }
@@ -102,8 +99,8 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `whitespace-nowrap rounded-full px-3.5 py-2 font-medium transition ${
-          isActive ? "bg-white text-ink shadow-sm" : "text-ink/60 hover:bg-ink/5 hover:text-ink"
+        `inline-flex min-h-[2.5rem] items-center whitespace-nowrap rounded-md px-3 font-medium transition-colors duration-fast ${
+          isActive ? "text-ink underline decoration-mint decoration-2 underline-offset-[6px]" : "text-muted hover:bg-ink/5 hover:text-ink"
         }`
       }
     >
@@ -114,13 +111,10 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
 
 function ComingSoonAI() {
   return (
-    <section className="card mx-auto max-w-xl p-8 text-center">
-      <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-mint-soft text-mint">
-        <Sparkles size={22} />
-      </span>
-      <p className="eyebrow mt-4">Em breve</p>
-      <h1 className="mt-2 text-2xl font-bold">Análise com IA está chegando</h1>
-      <p className="mt-3 leading-7 text-ink/65">
+    <section className="max-w-xl">
+      <p className="eyebrow">Em breve</p>
+      <h1 className="mt-2 text-[1.9rem] leading-tight">Análise com IA</h1>
+      <p className="mt-3 leading-7 text-muted">
         Estamos preparando perguntas em chat e um checklist de pontos do contrato para levar ao seu advogado. Enquanto
         isso, a calculadora já responde quanto pedir e qual proposta rende mais.
       </p>
