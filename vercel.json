@@ -3,7 +3,7 @@
   "services": {
     "backend": {
       "root": "backend",
-      "runtime": "go"
+      "framework": "go"
     },
     "frontend": {
       "root": "frontend",
